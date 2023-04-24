@@ -652,6 +652,7 @@ p_subj_roc <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="ROC"),
                 position=position_dodge(0.5), size=1) + 
   facet_wrap(.~classify) +
   labs(y='AUC-ROC error', x='# time points') + 
+  ggtitle("Subject Level") +
   scale_color_manual(values=color_method) +
   theme_bw()
 p_subj_roc
@@ -663,7 +664,8 @@ p_subj_pr <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="PR"),
   geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
                 position=position_dodge(0.5), size=1) + 
   facet_wrap(.~classify) +
-  labs(y='AUC-PR error', x='# time points') +
+  labs(y='AUC-PR error', x='# time points')+
+  ggtitle("Subject Level") +
   scale_color_manual(values=color_method) +
   theme_bw()
 p_subj_pr
@@ -728,6 +730,7 @@ p_Fmodel_summary <- ggplot(data=tab_Fmodel_summary,
   scale_x_continuous(breaks=2:10) + 
   scale_color_manual(values=color_method) +
   ylab('PERMANOVA F value') + xlab('# time points') + 
+  ggtitle("Sample Level") +
   theme_bw() + 
   theme(legend.position = "bottom")
 p_Fmodel_summary
@@ -796,6 +799,7 @@ p_sample_roc <- ggplot(data=dplyr::filter(tab_auc_sample_summary, measure=="ROC"
                 position=position_dodge(0.1), size=1) + 
   facet_wrap(.~classify) +
   labs(y='AUC-ROC error', x='# time points') + 
+  ggtitle("Sample Level") +
   scale_color_manual(values=color_method) +
   theme_bw() +
   theme(legend.position="bottom")
@@ -809,6 +813,7 @@ p_sample_pr <- ggplot(data=dplyr::filter(tab_auc_sample_summary, measure=="PR"),
                 position=position_dodge(0.1), size=1) + 
   facet_wrap(.~classify) +
   labs(y='AUC-PR error', x='# time points') + 
+  ggtitle("Sample Level") +
   scale_color_manual(values=color_method) +
   theme_bw() +
   theme(legend.position="bottom")
@@ -842,12 +847,12 @@ lgd <- get_legend(p_lgd)
 
 ## Print plot for manuscript
 
-```{r plot_all, fig.height=4, fig.width=9}
+```{r plot_all}
 lay <- rbind(c(1,2,2),c(1,2,2),c(1,2,2),c(1,2,2),c(1,2,2),
              c(3,3,3))
 p_all <- grid.arrange(p_Fmodel_summary + theme(legend.position="none"), 
              p_subj_pr + theme(legend.position="none"),
              lgd,
              layout_matrix=lay)
-ggsave('../figure_table/realsim_ecam.pdf', width=9, height=4, plot=p_all)
+ggsave('../figure_table/realsim_ecam.pdf', width=12, height=5, plot=p_all)
 ```

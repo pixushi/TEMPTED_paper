@@ -454,7 +454,7 @@ ratio_feature <- function(res_tempted, datlist,
                           function(x){
                             tt <- (t(toppct)%*%x[-1,])
                             bb <- (t(bottompct)%*%x[-1,])
-                            return(log((tt+0.5)/(bb+0.5)))},
+                            return(log((tt+1)/(bb+1)))},
                           simplify=F)
   metafeature.ratio <- NULL
   for (i in 1:length(datlist.ratio)){
