@@ -77,13 +77,13 @@ p_feat_ratio_summary <- plot_feature_summary(feature_mat_ratio,
                                              time_vec_ratio, 
                                              group_vec_ratio, bws=8, nrow=1) + 
   xlab('Gestational Week') + theme_bw() + 
-  theme(legend.position=c(0.85,0.15), 
+  theme(legend.position=c(0.8,0.22), 
         legend.background = element_rect(fill="white", size=0.2, linetype="solid", 
                                          colour ="black")) + 
   scale_fill_manual("Outcome", values=color_RB) +
   scale_color_manual("Outcome", values=color_RB) +
   theme(strip.text = element_blank(), 
-        strip.background = element_blank())
+        strip.background = element_blank()) + ylim(3.5,8.3)
 p_feat_ratio_summary
 ```
 
@@ -117,7 +117,7 @@ dev.off()
 
 ## plot boxplot of subject loading
 
-```{r subj_loading}
+```{r subj_loading, fig.height=2.5, fig.width=10}
 sub_vaginal <- read.csv("result/Vaginal_microbiome_subject_loadings.csv",
                         row.names=1)
 sub_vaginal$group2 <- ifelse(sub_vaginal$group=="TB", "Term", "Preterm")
@@ -135,7 +135,7 @@ p_sub_box
 
 
 lay <- matrix(c(1,1,2,2,2,2,3,3,3),1,)
-pdf('../figure_table/vaginal_plot.pdf', width=16, height=3.5)
+pdf('../figure_table/vaginal_plot.pdf', width=10, height=2.5)
 grid.arrange(p_sub_box, p_bar, p_feat_ratio_summary, layout_matrix=lay)
 dev.off()
 
@@ -144,7 +144,7 @@ dev.off()
 
 ## plot simulation results for PEMANOVA F
 
-```{r simulation}
+```{r simulation, fig.width=9, fig.height=4}
 tab_Fmodel <- read.csv("result/perm-res.csv", row.names=1)
 tab_Fmodel$metric[tab_Fmodel$metric=="FT-SVD"] <- "TEMPTED"
 tab_Fmodel <- dplyr::filter(tab_Fmodel, seq_depth>=50000 & metric!="Jaccard")
@@ -173,12 +173,11 @@ p_Fmodel_summary <- ggplot(data=tab_Fmodel_summary,
   scale_x_continuous(breaks=2:10) + 
   scale_color_manual(values=color_method) +
   ylab('PERMANOVA F value') + xlab('# time points') + 
-  theme_bw() + 
-  theme(legend.position = "bottom")
+  theme_bw() 
 p_Fmodel_summary
 
-pdf("../figure_table/realsim_vaginal_Fvalue.pdf", width=10, height=4)
-p_Fmodel_summary
+pdf("../figure_table/realsim_vaginal_Fvalue.pdf", width=9, height=3.5)
+p_Fmodel_summary + theme(legend.position = "none")
 dev.off()
 ```
 
