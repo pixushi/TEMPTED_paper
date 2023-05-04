@@ -13,7 +13,7 @@ output:
 
 ## Library
 
-```{r prep}
+```{r prep, message=FALSE}
 rm(list=ls())
 # for data 
 library(readr) # read tsv
@@ -39,7 +39,7 @@ library(plotly)
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 source('../TEMPTED.R')
-col_group <- c(brewer.pal(6,'Set2')[6], brewer.pal(6,'Set1')[c(1,3)])
+col_group <- c(brewer.pal(6,'Set2')[6], brewer.pal(6,'Set1')[c(3,1)])
 col_microbe <- c(brewer.pal(6,'Set1')[c(2,4)], brewer.pal(6,'Set2')[4])
 npc <- 3 # number of components
 bws <- 8 # for plotting
@@ -54,7 +54,9 @@ meta_all$group <- factor(meta_all$group, levels=
                            c("genotype=WT, disease=no",
                              "genotype=Pax5+/-, disease=no",
                              "genotype=Pax5+/-, disease=pB-ALL"))
+levels(meta_all$group) <- c("healthy wild type", "predisposed, remained healthy", "predisposed, developed pB-ALL")
 count_all <- read.csv("data/count_cleaned.csv", row.names=1)
+dim(count_all)
 load("data/distance_mat.Rdata")
 metauni <- unique(meta_all[,c('hostID', 'genotype', 'diseased', 'group')])
 metauni$group <- factor(metauni$group, sort(levels(metauni$group)))
@@ -99,7 +101,6 @@ res_tempted_all <- tempted(svd_all$datlist, r = npc, resolution = 51, smooth=1e-
 
 save(svd_all, res_tempted_all, datlist_all,
      file='result/res_leukemia_tempted.Rdata')
-
 ```
 
 ```{r}
@@ -110,19 +111,16 @@ svd_tempted <- svd_all
 meta_tab <- meta_all
 count_tab <- count_all
 datlist <- datlist_all
-
 ```
 
 ## Plot TEMPTED time loading
 
 ```{r time_loading, fig.width = 3, fig.height=3}
-
 p_time <- plot_time_loading(res_tempted, r=3) + scale_color_manual(values=col_microbe) + 
   labs(x='Week', y="Temporal Loading", color="Component") + 
   geom_line(size=1.5) + theme_bw() + 
   theme(legend.position='bottom')
 p_time
-
 ```
 
 
@@ -134,8 +132,7 @@ rownames(A.hat) <- A.hat$hostID
 table(rownames(A.hat)==rownames(res_tempted$A.hat))
 A.hat <- cbind(res_tempted$A.hat[,1:3], A.hat)
 A.hat$group <- factor(A.hat$group, 
-  levels=c("genotype=WT, disease=no", "genotype=Pax5+/-, disease=no",
-         "genotype=Pax5+/-, disease=pB-ALL"))
+  levels=c("healthy wild type", "predisposed, remained healthy", "predisposed, developed pB-ALL"))
 p_sub <- plot_ly(A.hat, x=~`Component 1`, y=~`Component 2`, z=~`Component 3`, 
              color=~group, colors=col_group)
 p_sub <- p_sub %>% add_markers(marker=list(size=5))
@@ -165,16 +162,8 @@ p_sub23 <- ggplot(data=A.hat, aes(x=`Component 2`, y=`Component 3`)) +
 datlist_raw <- format_tempted(count_all, meta_all$week, meta_all$hostID, 
                             threshold=0.95, transform='none')
 ratio_feat <- ratio_feature(res_tempted, datlist_raw, pct=0.005)
-names(ratio_feat)
-# the log ratio is constructed using the followng features
-rownames(res_tempted$B.data)[ratio_feat$toppct[,2]]
-rownames(res_tempted$B.data)[ratio_feat$bottompct[,2]]
-rownames(res_tempted$B.data)[ratio_feat$toppct[,3]]
-rownames(res_tempted$B.data)[ratio_feat$bottompct[,3]]
-
 
 ## summed up, by individual subject
-
 tab_feat_ratio <- ratio_feat$metafeature.ratio
 colnames(tab_feat_ratio)[2] <- 'hostID'
 tab_feat_ratio <- merge(tab_feat_ratio, metauni)
@@ -190,8 +179,7 @@ feature_mat_ratio <- reshape_feat_ratio[,c("Component 2", "Component 3")]
 
 time_vec_ratio <- reshape_feat_ratio$timepoint
 group_vec_ratio <- factor(reshape_feat_ratio$group, 
-                        levels=c("genotype=WT, disease=no", "genotype=Pax5+/-, disease=no",
-                                 "genotype=Pax5+/-, disease=pB-ALL"))
+                        levels=c("healthy wild type", "predisposed, remained healthy", "predisposed, developed pB-ALL"))
 p_feat_ratio_summary <- plot_feature_summary(feature_mat_ratio, 
                                            time_vec_ratio, 
                                            group_vec_ratio, bws=bws, nrow=1) + 
@@ -199,9 +187,64 @@ p_feat_ratio_summary <- plot_feature_summary(feature_mat_ratio,
   theme(legend.position='bottom') +
   scale_color_manual(values=col_group) + scale_fill_manual(values=col_group)
 p_feat_ratio_summary
-
 ```
-```{r, fig.width = 10, fig.height=3}
+
+
+
+## Plot top features associated with disease
+
+```{r save_topfeat}
+# the log ratio is constructed using the following features
+ftnames <- rownames(datlist_raw[[1]])[-1]
+tab_ftnames <- NULL
+for (ii in 1:npc){
+  tab_ftnames <- rbind(tab_ftnames, 
+                       data.frame(sequence=ftnames[ratio_feat$toppct[,ii]],
+                                  PC=ii, rank="Top"))
+  tab_ftnames <- rbind(tab_ftnames, 
+                       data.frame(sequence=ftnames[ratio_feat$bottompct[,ii]],
+                                  PC=ii, rank="Bottom"))
+}
+taxtab <- read.csv("data/gg2-taxonomy.tsv", sep="\t", row.names=1)
+tab_ftnames <- cbind(tab_ftnames, taxtab[tab_ftnames$sequence,])
+tab_ftnames$dummy <- paste0("ASV", 1:nrow(tab_ftnames))
+write.csv(tab_ftnames, file="../figure_table/leukemia_topfeature.csv")
+```
+
+```{r plot_topfeat}
+pdf("../figure_table/leukemia_topfeat.pdf", height=5, width=10)
+for (ii in 2:3){
+  tab_ftnames_pc <- dplyr::filter(tab_ftnames, PC==ii)
+  topfeat_pc <- tab_ftnames_pc$sequence
+  
+  prop_all <- (count_all)/rowSums(count_all)
+  if (ii==2){
+    feat_mat_pc <- prop_all[meta_all$genotype!="WT",topfeat_pc]
+    meta_pc <- meta_all[meta_all$genotype!="WT",]
+  }
+  if (ii==3){
+    feat_mat_pc <- prop_all[,topfeat_pc]
+    meta_pc <- meta_all
+  } 
+  nfeat <- ncol(feat_mat_pc)
+
+  tab_topfeat <- data.frame(RA=as.vector(as.matrix(feat_mat_pc)),
+                            feature=rep(tab_ftnames_pc$dummy, each=nrow(feat_mat_pc)),
+                            time=rep(meta_pc$week, nfeat),
+                            group=rep(meta_pc[,ifelse(ii==2, "group", "genotype")], nfeat),
+                            hostID=rep(meta_pc$hostID, nfeat))
+  p_topfeat <- ggplot(data=tab_topfeat) + 
+    geom_point(aes(x=time, y=RA, color=group), size=0.8) + 
+    facet_wrap(vars(feature), nrow=2, scales="free_y") + theme_bw() + 
+    labs(x="Week", y="Relative Abundance", color=ifelse(ii==2, "Outcome", "Genotype")) + 
+    ggtitle(paste0("Top Features Identified by PC", ii)) + theme(legend.position="bottom")
+  print(p_topfeat)
+}
+dev.off()
+```
+
+
+```{r tempted_allplot, fig.width = 10, fig.height=3}
 lay <- rbind(c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), 
              c(4,5,5,5))
 lgd1 <- get_legend(p_time)
@@ -213,6 +256,7 @@ p_tempted <- grid.arrange(p_time+theme(legend.position="none"),
                           layout_matrix=lay)
 ggsave('../figure_table/leukemia_plot.pdf', width=10, height=3, plot=p_tempted)
 ```
+
 
 
 # CTF
@@ -340,8 +384,7 @@ for (i in 1:length(dm_list)){
   mds_mat_all <- rbind(mds_mat_all, mds_mat)
 }
 mds_mat_all$group <- factor(mds_mat_all$group, 
-                            levels=c("genotype=WT, disease=no", "genotype=Pax5+/-, disease=no",
-                                     "genotype=Pax5+/-, disease=pB-ALL"))
+                            levels=c("healthy wild type", "predisposed, remained healthy", "predisposed, developed pB-ALL"))
 colnames(mds_mat_all)
 mds_mat_all$method <- as.factor(mds_mat_all$method)
 ```
@@ -374,7 +417,7 @@ res_adonis <- adonis2(tmp[,6:8] ~ diseased, method='euclidean',
 pval_permanova_late[length(mth)+1] <- res_adonis$`Pr(>F)`[1]
 Fval_permanova_late[length(mth)+1] <- res_adonis$F[1]
 # for CTF
-tmp <- dplyr::filter(ctf_traj, week_int>=35 & week_int<=70 & group!="genotype=WT, disease=no")
+tmp <- dplyr::filter(ctf_traj, week_int>=35 & week_int<=70 & group!="healthy wild type")
 res_adonis <- adonis2(tmp[,2:4] ~ tmp$group, method='euclidean')
 pval_permanova_late[length(mth)+2] <- res_adonis$`Pr(>F)`[1]
 Fval_permanova_late[length(mth)+2] <- res_adonis$F[1]
@@ -409,8 +452,7 @@ for (kk in 1:nmethod){
   
   # Wilcoxon test
   for (jj in 1:ncol(feature_mat)){
-    sel <- time_vec>=35 & time_vec<=70 & 
-    group_vec!='genotype=WT, disease=no'
+    sel <- time_vec>=35 & time_vec<=70 & group_vec!='healthy wild type'
     table(group_vec[sel])
     test_tmp <- wilcox.test(feature_mat[sel,jj]~group_vec[sel])
     pval_wilcox_late[kk,jj] <- test_tmp$p.value
@@ -447,14 +489,14 @@ Wval_wilcox_late <- as.data.frame(Wval_wilcox_late)
 
 # for TEMPTED
 sel <- time_vec_ratio>=35 & time_vec_ratio<=70 & 
-  group_vec_ratio!='genotype=WT, disease=no'
+  group_vec_ratio!='healthy wild type'
 wilcox_tempted <- wilcox.test(feature_mat_ratio$`Component 2`[sel]~
                              group_vec_ratio[sel])
 pval_wilcox_late["TEMPTED","PC.2"] <- wilcox_tempted$p.value
 Wval_wilcox_late["TEMPTED","PC.2"] <- wilcox_tempted$statistic
 # for CTF
 ctf_traj_late <- dplyr::filter(ctf_traj, week_int>=35 & week_int<=70 & 
-  group!='genotype=WT, disease=no')
+  group!='healthy wild type')
 wilcox_ctf <-  wilcox.test(ctf_traj_late$PC1~ctf_traj_late$group)
 pval_wilcox_late["CTF","PC.1"] <- wilcox_ctf$p.value
 Wval_wilcox_late["CTF","PC.1"] <- wilcox_ctf$statistic

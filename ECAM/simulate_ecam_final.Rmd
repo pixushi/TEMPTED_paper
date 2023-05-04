@@ -137,7 +137,7 @@ for (jj in 1:length(nkeep)){
     svd_sub <- svd_centralize(subdata)
     res_tempted <- tempted(svd_sub$datlist, r = npc, resolution = 101, smooth=1e-4)
     agg_feat <- aggregate_feature(res_tempted, NULL, subdata)
-    aggfeat_mat <- reshape(agg_feat$metafeature.obs[,1:4], 
+    aggfeat_mat <- reshape(agg_feat$metafeature.aggregate[,1:4], 
                            idvar=c("subID","timepoint") , 
                            v.names=c("value"), timevar="PC",
                            direction="wide")
@@ -298,7 +298,7 @@ for (jj in 1:length(nkeep)){
       print(ii)
       svd_train <- svd_centralize(subdata[-ii])
       res_train <- tempted(svd_train$datlist, r = npc, resolution = 101, smooth=1e-4)
-      A_test <- est_A(subdata[ii], res_train, svd_train)
+      A_test <- est_test_subject(subdata[ii], res_train, svd_train)
       dftrain <- data.frame(y=metauni[-ii,'delivery_ind'], x=res_train$A)
       dftest <- data.frame(y=metauni[ii,'delivery_ind'], x=A_test)
       # logistic regression
