@@ -11,7 +11,7 @@
 
 <meta name="author" content="Pixu Shi" />
 
-<meta name="date" content="2023-04-17" />
+<meta name="date" content="2023-05-10" />
 
 <title>Analysis of Stanford Vaginal Microbiome Study</title>
 
@@ -359,7 +359,7 @@ display: none;
 <h1 class="title toc-ignore">Analysis of Stanford Vaginal Microbiome
 Study</h1>
 <h4 class="author">Pixu Shi</h4>
-<h4 class="date">2023-04-17</h4>
+<h4 class="date">2023-05-10</h4>
 
 </div>
 
@@ -406,7 +406,7 @@ library(dplyr) # data formatting</code></pre>
 <pre class="r"><code>library(tidyverse) # data formatting</code></pre>
 <pre><code>## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.2
 ## ──</code></pre>
-<pre><code>## ✔ ggplot2 3.4.1     ✔ purrr   1.0.1
+<pre><code>## ✔ ggplot2 3.4.2     ✔ purrr   1.0.1
 ## ✔ tibble  3.2.1     ✔ stringr 1.5.0
 ## ✔ tidyr   1.3.0     ✔ forcats 0.5.2
 ## ✔ readr   2.1.3     
@@ -522,7 +522,7 @@ library(gridExtra)</code></pre>
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 source(&#39;../TEMPTED.R&#39;)</code></pre>
-<pre><code>## Nonparametric Kernel Methods for Mixed Datatypes (version 0.60-16)
+<pre><code>## Nonparametric Kernel Methods for Mixed Datatypes (version 0.60-17)
 ## [vignette(&quot;np_faq&quot;,package=&quot;np&quot;) provides answers to frequently asked questions]
 ## [vignette(&quot;np&quot;,package=&quot;np&quot;) an overview]
 ## [vignette(&quot;entropy_np&quot;,package=&quot;np&quot;) an overview of entropy-based methods]</code></pre>
@@ -584,7 +584,7 @@ dev.off()</code></pre>
 <div id="run-tempted" class="section level2">
 <h2>Run TEMPTED</h2>
 <pre class="r"><code>datlist_conc &lt;- format_tempted(count_tab, meta_tab$DayVsConc, meta_tab$PregID, 
-                              threshold=0.95, pseudo_count=0.5, transform=&#39;clr&#39;)
+                              threshold=0.95, pseudo=0.5, transform=&#39;clr&#39;)
 datlist_raw_conc &lt;- format_tempted(count_tab, meta_tab$DayVsConc, meta_tab$PregID, 
                                   threshold=0.95, transform=&#39;none&#39;)
 npc &lt;- 2
@@ -634,19 +634,19 @@ table(metauni$PregOut)</code></pre>
 <pre><code>## 
 ## Preterm    Term 
 ##     563    2262</code></pre>
-<pre class="r"><code>A.hat &lt;- metauni
-rownames(A.hat) &lt;- A.hat$PregID
-table(rownames(A.hat)==rownames(res_tempted$A.hat))</code></pre>
+<pre class="r"><code>A_hat &lt;- metauni
+rownames(A_hat) &lt;- A_hat$PregID
+table(rownames(A_hat)==rownames(res_tempted$A_hat))</code></pre>
 <pre><code>## 
 ## TRUE 
 ##  190</code></pre>
-<pre class="r"><code>A.hat &lt;- cbind(res_tempted$A.hat[,1:npc], A.hat)
-A.hat$PregOut &lt;- as.factor(A.hat$PregOut)
+<pre class="r"><code>A_hat &lt;- cbind(res_tempted$A_hat[,1:npc], A_hat)
+A_hat$PregOut &lt;- as.factor(A_hat$PregOut)
 
-pval &lt;- round(wilcox.test(A.hat$`Component 1`~A.hat$PregOut)$p.value,4)
+pval &lt;- round(wilcox.test(A_hat$`Component 1`~A_hat$PregOut)$p.value,4)
 pval</code></pre>
 <pre><code>## [1] 4e-04</code></pre>
-<pre class="r"><code>p_sub_box &lt;- ggplot(A.hat) + 
+<pre class="r"><code>p_sub_box &lt;- ggplot(A_hat) + 
   geom_boxplot(aes(x=PregOut, y=`Component 1`, fill=PregOut)) + 
   theme_bw() + scale_fill_manual(values=color_RB) + 
   labs(x=&quot;Outcome&quot;) + 
@@ -662,7 +662,7 @@ p_sub_box</code></pre>
 
 ## summed up, by individual subject
 
-tab_feat_ratio &lt;- ratio_feat$metafeature.ratio
+tab_feat_ratio &lt;- ratio_feat$metafeature_ratio
 colnames(tab_feat_ratio)[2] &lt;- &#39;PregID&#39;
 tab_feat_ratio &lt;- merge(tab_feat_ratio, metauni)
 
@@ -714,7 +714,7 @@ sum(ratio_feat$toppct[,1])</code></pre>
 <pre class="r"><code>tab_taxa &lt;- rbind(tax_table(ps_filtered)[names(which(ratio_feat$toppct[,1])),],
 tax_table(ps_filtered)[names(which(ratio_feat$bottompct[,1])),])
 tab_taxa &lt;-as.data.frame(tab_taxa)
-tab_taxa$loading_PC1 &lt;- res_tempted$B.hat[rownames(tab_taxa),1]
+tab_taxa$loading_PC1 &lt;- res_tempted$B_hat[rownames(tab_taxa),1]
 write.csv(tab_taxa, file=&quot;../figure_table/vaginal_Stanford_topfeat.csv&quot;)
 rownames(tab_taxa) &lt;- NULL
 tab_taxa</code></pre>

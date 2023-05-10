@@ -131,21 +131,21 @@ for (jj in 1:length(nkeep)){
     meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
     metauni <- unique(meta_sub[,c("studyid", "delivery_ind")])
     subdata <- format_tempted(count_sub, meta_sub$day_of_life, meta_sub$studyid, 
-                            threshold=0.95, pseudo_count=0.5,
+                            threshold=0.95, pseudo=0.5,
                             transform="clr")
     # run tempted with all subjects and run permanova test
     svd_sub <- svd_centralize(subdata)
     res_tempted <- tempted(svd_sub$datlist, r = npc, resolution = 101, smooth=1e-4)
     agg_feat <- aggregate_feature(res_tempted, NULL, subdata)
-    aggfeat_mat <- reshape(agg_feat$metafeature.aggregate[,1:4], 
+    aggfeat_mat <- reshape(agg_feat$metafeature_aggregate[,1:4], 
                            idvar=c("subID","timepoint") , 
                            v.names=c("value"), timevar="PC",
                            direction="wide")
     colnames(aggfeat_mat)[1] <- 'studyid'
     aggfeat_mat <- merge(aggfeat_mat, metauni, by='studyid')
     aggfeat_mat[,2+1:npc] <- apply(aggfeat_mat[,2+1:npc], 2, scale)
-    tempted_sub <- as.data.frame(res_tempted$A.hat)
-    tempted_sub$`intercept` <- svd_sub$A.tilde
+    tempted_sub <- as.data.frame(res_tempted$A_hat)
+    tempted_sub$`intercept` <- svd_sub$A_tilde
     tempted_sub$studyid <- rownames(tempted_sub)
     tempted_sub <- merge(metauni, tempted_sub)
     write.csv(aggfeat_mat, 
@@ -289,7 +289,7 @@ for (jj in 1:length(nkeep)){
     count_sub <- count_tab[sampleID[ss,jj][[1]],]
     meta_sub <- meta_tab[sampleID[ss,jj][[1]],]
     subdata <- format_tempted(count_sub, meta_sub$day_of_life, meta_sub$studyid, 
-                            threshold=0.95, pseudo_count=0.5, transform='clr')
+                            threshold=0.95, pseudo=0.5, transform='clr')
     metauni_sub <- metauni[names(subdata),]
     # leave one out prediction
     predprob_glm <- predprob_rf <- rep(NA, length(subdata))

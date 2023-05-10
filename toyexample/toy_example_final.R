@@ -136,7 +136,7 @@ df_count <- rDM(size=depth, mu=as.matrix(df_signal[,1:nfeat]), overdisp=0)
 
 # gather metadata
 colnames(df_count) <- paste0('Microbe',1:ncol(df_count))
-df_count[,c(1,3)] <- df_count[,c(3,1)] 
+df_count[,c(1,3)] <- df_count[,c(3,1)]
 df_meta <- df_signal[,c('time', 'subject', 'group')]
 
 write.csv(df_count, file='toy_example_count.csv')
@@ -152,23 +152,23 @@ transform_count_tab <- df_count/rowSums(df_count)
 meta_tab <- df_meta
 
 tab_ori <- cbind(transform_count_tab[,1:4], meta_tab)
-tab_ori <- reshape(tab_ori, direction="long", 
+tab_ori <- reshape(tab_ori, direction="long",
                    varying=list(1:4), v.names="abundance",
                    timevar="Microbe")
 tab_ori$Microbe <- paste0('Microbe',tab_ori$Microbe)
 tab_ori$Microbe[tab_ori$Microbe=="Microbe4"] <- "1 of 97 Others"
 tab_ori$Microbe <- factor(tab_ori$Microbe, levels=unique(tab_ori$Microbe))
-p_ori <- ggplot(tab_ori) + 
-  geom_point(aes(x=time, y=abundance, color=Microbe), size=0.3) + 
-  facet_grid(Microbe~group) + 
-  scale_y_continuous(breaks=seq(0, 0.1, 0.05)) + 
+p_ori <- ggplot(tab_ori) +
+  geom_point(aes(x=time, y=abundance, color=Microbe), size=0.3) +
+  facet_grid(Microbe~group) +
+  scale_y_continuous(breaks=seq(0, 0.1, 0.05)) +
   scale_color_manual(values=col_microbe) +
-  labs(x='', y='Observed Relative Abundance', color='Microbe') + 
-  theme_bw() + 
-  theme(panel.spacing.y = unit(0, "lines"), panel.spacing.x = unit(1, "lines"), 
-        legend.position="none", axis.text.x=element_blank(), 
+  labs(x='', y='Observed Relative Abundance', color='Microbe') +
+  theme_bw() +
+  theme(panel.spacing.y = unit(0, "lines"), panel.spacing.x = unit(1, "lines"),
+        legend.position="none", axis.text.x=element_blank(),
         plot.margin=margin(0.2,0.2,0,0.2,'cm'))
-  
+
 p_ori
 
 
@@ -197,14 +197,14 @@ meta_tab2 <- meta_tab
 meta_tab2$subject <- as.character(as.numeric(substring(meta_tab2$subject,4))%%20)
 meta_tab2$microbe <- "Timeline"
 
-p_timeline <- ggplot(data=meta_tab2, 
-                     aes(x=time, y=subject, 
+p_timeline <- ggplot(data=meta_tab2,
+                     aes(x=time, y=subject,
                          group=subject, color=group)) +
-  geom_line(size=0.15) + geom_point(size=0.3) + 
+  geom_line(size=0.15) + geom_point(size=0.3) +
   scale_color_manual(values=col_group) +
   labs(y="Subjects",x="Time",color="Group") + facet_grid(microbe~group) +
   theme_bw() +
-  theme(axis.text.y=element_blank(), legend.position='none', 
+  theme(axis.text.y=element_blank(), legend.position='none',
         panel.spacing.y = unit(0, "lines"), panel.spacing.x = unit(1, "lines"),
         strip.text.x=element_blank(), strip.background.y = element_rect("#FFFFFF"),
         plot.margin=margin(-0.4,0.2,0,0.88,'cm'),
@@ -224,33 +224,33 @@ dev.off()
 
 count_tab <- df_count
 meta_tab <- df_meta
-datlist <- format_tempted(count_tab, meta_tab$time, meta_tab$subject, 
-                        threshold=1, pseudo_count=0.5, transform='clr')
+datlist <- format_tempted(count_tab, meta_tab$time, meta_tab$subject,
+                        threshold=1, pseudo=0.5, transform='clr')
 npc <- 3
 
 res_svd <- svd_centralize(datlist, 1)
 res_tempted <- tempted(res_svd$datlist, r=npc, resolution=101, smooth=1e-4)
-res_tempted$A.hat[,2] <- -res_tempted$A.hat[,2]
-res_tempted$B.hat[,2] <- -res_tempted$B.hat[,2]
+res_tempted$A_hat[,2] <- -res_tempted$A_hat[,2]
+res_tempted$B_hat[,2] <- -res_tempted$B_hat[,2]
 save(res_tempted, file="toy_example.Rdata")
 
 load("toy_example.Rdata")
 
 # time loading
 p_time <- plot_time_loading(res_tempted)+ theme_bw() +
-     labs(x="Time", y="Temporal Loading", color="Component") + 
+     labs(x="Time", y="Temporal Loading", color="Component") +
      scale_color_manual(values=col_microbe) +
-     theme(legend.position="bottom") + 
+     theme(legend.position="bottom") +
      geom_line(size=1.5)
 p_time
 
 # subject loading
 metauni <- unique(meta_tab[,c('subject', 'group')])
-A.hat <- metauni
-rownames(A.hat) <- A.hat$subject
-table(rownames(A.hat)==rownames(res_tempted$A.hat))
-A.hat <- cbind(res_tempted$A.hat, A.hat)
-tab_A <- reshape(A.hat, direction="long", idvar="subject",
+A_hat <- metauni
+rownames(A_hat) <- A_hat$subject
+table(rownames(A_hat)==rownames(res_tempted$A_hat))
+A_hat <- cbind(res_tempted$A_hat, A_hat)
+tab_A <- reshape(A_hat, direction="long", idvar="subject",
                  v.names="value", timevar="Component",
                  varying=list(1:3))
 tab_A$subject <- as.numeric(substring(tab_A$subject,4))
@@ -265,30 +265,30 @@ tab_A$Component <- paste("Component", tab_A$Component)
 
 
 
-p_sub <- ggplot(data=tab_A, aes(y=value,x=order, fill=group)) + 
-  geom_bar(stat = "identity") + scale_fill_manual(values=col_group) + 
-  theme_bw() + theme(legend.position="bottom") + 
+p_sub <- ggplot(data=tab_A, aes(y=value,x=order, fill=group)) +
+  geom_bar(stat = "identity") + scale_fill_manual(values=col_group) +
+  theme_bw() + theme(legend.position="bottom") +
   labs(x="Subjects Ordered by Loading", y="Subject Loading", fill="Group") +
   facet_grid(Component~.)
 p_sub
 
 ## feature loading
 col_feat <- col_microbe[c(1:4,rep(4,96))]
-B.hat <- data.frame(res_tempted$B.hat, rownames(res_tempted$B.hat))
-colnames(B.hat)[npc+1] <- 'microbe_name'
+B_hat <- data.frame(res_tempted$B_hat, rownames(res_tempted$B_hat))
+colnames(B_hat)[npc+1] <- 'microbe_name'
 topfeat <- c(rep(TRUE, 3), rep(FALSE, nfeat-3))
-B.hat$microbe_name[!topfeat] <- "Others"
-B.hat$rownum <- as.character(1:nrow(B.hat))
+B_hat$microbe_name[!topfeat] <- "Others"
+B_hat$rownum <- as.character(1:nrow(B_hat))
 
-tab_B <- reshape(B.hat, direction="long", idvar="rownum",
+tab_B <- reshape(B_hat, direction="long", idvar="rownum",
                  v.names="value", timevar="Component",
                  varying=list(1:3))
 tab_B$rownum <- as.numeric(tab_B$rownum)
 tab_B$Component <- paste("Component", tab_B$Component)
 
-p_feature <- ggplot(data=tab_B, aes(x=rownum, y=value, fill=microbe_name)) + 
-  geom_bar(stat="identity") + scale_fill_manual(values=col_microbe) + 
-  theme_bw() + theme(legend.position="bottom") + 
+p_feature <- ggplot(data=tab_B, aes(x=rownum, y=value, fill=microbe_name)) +
+  geom_bar(stat="identity") + scale_fill_manual(values=col_microbe) +
+  theme_bw() + theme(legend.position="bottom") +
   labs(x="Microbes", y="Feature Loading", fill="Microbe") +
   facet_grid(Component~.)
 p_feature

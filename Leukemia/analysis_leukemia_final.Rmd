@@ -93,7 +93,7 @@ dev.off()
 
 ```{r run_tempted}
 datlist_all <- format_tempted(count_all, meta_all$week, meta_all$hostID, 
-                            threshold=0.95, pseudo_count=0.5, transform='clr')
+                            threshold=0.95, pseudo=0.5, transform='clr')
 print(dim(datlist_all[[1]]))
 
 svd_all <- svd_centralize(datlist_all, 1)
@@ -127,13 +127,13 @@ p_time
 ## Plot TEMPTED subject loadings
 
 ```{r}
-A.hat <- metauni
-rownames(A.hat) <- A.hat$hostID
-table(rownames(A.hat)==rownames(res_tempted$A.hat))
-A.hat <- cbind(res_tempted$A.hat[,1:3], A.hat)
-A.hat$group <- factor(A.hat$group, 
+A_hat <- metauni
+rownames(A_hat) <- A_hat$hostID
+table(rownames(A_hat)==rownames(res_tempted$A_hat))
+A_hat <- cbind(res_tempted$A_hat[,1:3], A_hat)
+A_hat$group <- factor(A_hat$group, 
   levels=c("healthy wild type", "predisposed, remained healthy", "predisposed, developed pB-ALL"))
-p_sub <- plot_ly(A.hat, x=~`Component 1`, y=~`Component 2`, z=~`Component 3`, 
+p_sub <- plot_ly(A_hat, x=~`Component 1`, y=~`Component 2`, z=~`Component 3`, 
              color=~group, colors=col_group)
 p_sub <- p_sub %>% add_markers(marker=list(size=5))
 p_sub <- p_sub %>% layout(scene=list(xaxis=list(title="Component 1", titlefont = list(size = 20)), 
@@ -147,7 +147,7 @@ htmlwidgets::saveWidget(widget=p_sub,
                         selfcontained=F)
 ```
 ```{r, fig.width = 3, fig.height=3.2}
-p_sub23 <- ggplot(data=A.hat, aes(x=`Component 2`, y=`Component 3`)) +
+p_sub23 <- ggplot(data=A_hat, aes(x=`Component 2`, y=`Component 3`)) +
   geom_point(aes(color=group)) + 
   scale_color_manual(values=col_group) + 
   theme_bw()+
@@ -164,7 +164,7 @@ datlist_raw <- format_tempted(count_all, meta_all$week, meta_all$hostID,
 ratio_feat <- ratio_feature(res_tempted, datlist_raw, pct=0.005)
 
 ## summed up, by individual subject
-tab_feat_ratio <- ratio_feat$metafeature.ratio
+tab_feat_ratio <- ratio_feat$metafeature_ratio
 colnames(tab_feat_ratio)[2] <- 'hostID'
 tab_feat_ratio <- merge(tab_feat_ratio, metauni)
 

@@ -11,7 +11,7 @@
 
 <meta name="author" content="Pixu Shi" />
 
-<meta name="date" content="2023-04-18" />
+<meta name="date" content="2023-05-10" />
 
 <title>Simulation Based on ECAM Data</title>
 
@@ -358,7 +358,7 @@ display: none;
 
 <h1 class="title toc-ignore">Simulation Based on ECAM Data</h1>
 <h4 class="author">Pixu Shi</h4>
-<h4 class="date">2023-04-18</h4>
+<h4 class="date">2023-05-10</h4>
 
 </div>
 
@@ -538,7 +538,7 @@ library(gridExtra)</code></pre>
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 color_RB &lt;- brewer.pal(3,&#39;Set1&#39;)[1:2]
 source(&#39;../TEMPTED.R&#39;)</code></pre>
-<pre><code>## Nonparametric Kernel Methods for Mixed Datatypes (version 0.60-16)
+<pre><code>## Nonparametric Kernel Methods for Mixed Datatypes (version 0.60-17)
 ## [vignette(&quot;np_faq&quot;,package=&quot;np&quot;) provides answers to frequently asked questions]
 ## [vignette(&quot;np&quot;,package=&quot;np&quot;) an overview]
 ## [vignette(&quot;entropy_np&quot;,package=&quot;np&quot;) an overview of entropy-based methods]</code></pre>
@@ -634,21 +634,21 @@ npc &lt;- 2 </code></pre>
     meta_sub$delivery_ind &lt;- meta_sub$delivery==&quot;Vaginal&quot;
     metauni &lt;- unique(meta_sub[,c(&quot;studyid&quot;, &quot;delivery_ind&quot;)])
     subdata &lt;- format_tempted(count_sub, meta_sub$day_of_life, meta_sub$studyid, 
-                            threshold=0.95, pseudo_count=0.5,
+                            threshold=0.95, pseudo=0.5,
                             transform=&quot;clr&quot;)
     # run tempted with all subjects and run permanova test
     svd_sub &lt;- svd_centralize(subdata)
     res_tempted &lt;- tempted(svd_sub$datlist, r = npc, resolution = 101, smooth=1e-4)
     agg_feat &lt;- aggregate_feature(res_tempted, NULL, subdata)
-    aggfeat_mat &lt;- reshape(agg_feat$metafeature.obs[,1:4], 
+    aggfeat_mat &lt;- reshape(agg_feat$metafeature_aggregate[,1:4], 
                            idvar=c(&quot;subID&quot;,&quot;timepoint&quot;) , 
                            v.names=c(&quot;value&quot;), timevar=&quot;PC&quot;,
                            direction=&quot;wide&quot;)
     colnames(aggfeat_mat)[1] &lt;- &#39;studyid&#39;
     aggfeat_mat &lt;- merge(aggfeat_mat, metauni, by=&#39;studyid&#39;)
     aggfeat_mat[,2+1:npc] &lt;- apply(aggfeat_mat[,2+1:npc], 2, scale)
-    tempted_sub &lt;- as.data.frame(res_tempted$A.hat)
-    tempted_sub$`intercept` &lt;- svd_sub$A.tilde
+    tempted_sub &lt;- as.data.frame(res_tempted$A_hat)
+    tempted_sub$`intercept` &lt;- svd_sub$A_tilde
     tempted_sub$studyid &lt;- rownames(tempted_sub)
     tempted_sub &lt;- merge(metauni, tempted_sub)
     write.csv(aggfeat_mat, 
@@ -787,7 +787,7 @@ for (jj in 1:length(nkeep)){
     count_sub &lt;- count_tab[sampleID[ss,jj][[1]],]
     meta_sub &lt;- meta_tab[sampleID[ss,jj][[1]],]
     subdata &lt;- format_tempted(count_sub, meta_sub$day_of_life, meta_sub$studyid, 
-                            threshold=0.95, pseudo_count=0.5, transform=&#39;clr&#39;)
+                            threshold=0.95, pseudo=0.5, transform=&#39;clr&#39;)
     metauni_sub &lt;- metauni[names(subdata),]
     # leave one out prediction
     predprob_glm &lt;- predprob_rf &lt;- rep(NA, length(subdata))
@@ -796,7 +796,7 @@ for (jj in 1:length(nkeep)){
       print(ii)
       svd_train &lt;- svd_centralize(subdata[-ii])
       res_train &lt;- tempted(svd_train$datlist, r = npc, resolution = 101, smooth=1e-4)
-      A_test &lt;- est_A(subdata[ii], res_train, svd_train)
+      A_test &lt;- est_test_subject(subdata[ii], res_train, svd_train)
       dftrain &lt;- data.frame(y=metauni[-ii,&#39;delivery_ind&#39;], x=res_train$A)
       dftest &lt;- data.frame(y=metauni[ii,&#39;delivery_ind&#39;], x=A_test)
       # logistic regression

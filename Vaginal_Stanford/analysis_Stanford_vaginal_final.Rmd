@@ -94,7 +94,7 @@ dev.off()
 
 ```{r run_tempted}
 datlist_conc <- format_tempted(count_tab, meta_tab$DayVsConc, meta_tab$PregID, 
-                              threshold=0.95, pseudo_count=0.5, transform='clr')
+                              threshold=0.95, pseudo=0.5, transform='clr')
 datlist_raw_conc <- format_tempted(count_tab, meta_tab$DayVsConc, meta_tab$PregID, 
                                   threshold=0.95, transform='none')
 npc <- 2
@@ -142,15 +142,15 @@ metauni <- unique(meta_tab[,c('PregID', 'PregOut')])
 rownames(metauni) <- metauni$PregID
 table(metauni$PregOut)
 table(meta_tab$PregOut)
-A.hat <- metauni
-rownames(A.hat) <- A.hat$PregID
-table(rownames(A.hat)==rownames(res_tempted$A.hat))
-A.hat <- cbind(res_tempted$A.hat[,1:npc], A.hat)
-A.hat$PregOut <- as.factor(A.hat$PregOut)
+A_hat <- metauni
+rownames(A_hat) <- A_hat$PregID
+table(rownames(A_hat)==rownames(res_tempted$A_hat))
+A_hat <- cbind(res_tempted$A_hat[,1:npc], A_hat)
+A_hat$PregOut <- as.factor(A_hat$PregOut)
 
-pval <- round(wilcox.test(A.hat$`Component 1`~A.hat$PregOut)$p.value,4)
+pval <- round(wilcox.test(A_hat$`Component 1`~A_hat$PregOut)$p.value,4)
 pval
-p_sub_box <- ggplot(A.hat) + 
+p_sub_box <- ggplot(A_hat) + 
   geom_boxplot(aes(x=PregOut, y=`Component 1`, fill=PregOut)) + 
   theme_bw() + scale_fill_manual(values=color_RB) + 
   labs(x="Outcome") + 
@@ -167,7 +167,7 @@ ratio_feat <- ratio_feature(res_tempted, datlist_raw, pct=0.05,
 
 ## summed up, by individual subject
 
-tab_feat_ratio <- ratio_feat$metafeature.ratio
+tab_feat_ratio <- ratio_feat$metafeature_ratio
 colnames(tab_feat_ratio)[2] <- 'PregID'
 tab_feat_ratio <- merge(tab_feat_ratio, metauni)
 
@@ -215,7 +215,7 @@ sum(ratio_feat$bottompct[,1])
 tab_taxa <- rbind(tax_table(ps_filtered)[names(which(ratio_feat$toppct[,1])),],
 tax_table(ps_filtered)[names(which(ratio_feat$bottompct[,1])),])
 tab_taxa <-as.data.frame(tab_taxa)
-tab_taxa$loading_PC1 <- res_tempted$B.hat[rownames(tab_taxa),1]
+tab_taxa$loading_PC1 <- res_tempted$B_hat[rownames(tab_taxa),1]
 write.csv(tab_taxa, file="../figure_table/vaginal_Stanford_topfeat.csv")
 rownames(tab_taxa) <- NULL
 tab_taxa
