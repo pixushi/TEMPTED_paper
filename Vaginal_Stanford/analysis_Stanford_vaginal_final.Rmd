@@ -13,7 +13,7 @@ output:
 
 ## Library
 
-```{r prep}
+```{r prep, message=FALSE}
 rm(list=ls())
 # for data
 library(qiime2R) # read in Qiime artifacts
@@ -253,9 +253,9 @@ ggsave('../figure_table/vaginal_Stanford_plot.pdf', width=16, height=3.5, plot=p
 ```
 
 
-## Differential abundance using Adelx2
+## Differential abundance using ADELx2
 
-```{r run_aldex}
+```{r run_aldex, message=FALSE}
 meta_concise <- meta_tab[,c("PregID", "PregOut", "DayVsConc")]
 meta_concise <- meta_concise %>%
   mutate(WeekVsConc=floor(DayVsConc/7)) %>%
@@ -267,7 +267,7 @@ table(meta_concise$WeekVsConc, meta_concise$PregOut)
 tm_uniq <- 12:35
 tcount_tab <- t(count_tab[rownames(meta_concise),])
 
-
+set.seed(0)
 res_aldex_all <- vector(mode = "list", length = length(tm_uniq))
 for (ii in 1:length(tm_uniq)){
   print(ii)
@@ -278,11 +278,15 @@ for (ii in 1:length(tm_uniq)){
 }
 
 for (ii in 1:length(res_aldex_all)){
-  print(ii)
   res_aldex_all[[ii]]$we.eFDR <- p.adjust(res_aldex_all[[ii]]$we.ep, "fdr")
-  print(summary(res_aldex_all[[ii]]$we.eFDR))
 }
 saveRDS(res_aldex_all, file="result/res_aldex.RDS")
 ```
 
+```{r}
+res_aldex_all <- readRDS(file="result/res_aldex.RDS")
+for (ii in 1:length(res_aldex_all)){
+  print(summary(res_aldex_all[[ii]]$we.eFDR))
+}
+```
 

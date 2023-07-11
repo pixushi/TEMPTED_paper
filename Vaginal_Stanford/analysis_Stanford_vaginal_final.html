@@ -384,7 +384,7 @@ trajectory of log ratio of total abundance of top features</a></li>
 <li><a href="#bar-plot-of-top-feature-loading" id="toc-bar-plot-of-top-feature-loading">Bar plot of top feature
 loading</a></li>
 <li><a href="#differential-abundance-using-adelx2" id="toc-differential-abundance-using-adelx2">Differential abundance
-using Adelx2</a></li>
+using ADELx2</a></li>
 </ul></li>
 </ul>
 </div>
@@ -396,153 +396,28 @@ using Adelx2</a></li>
 <pre class="r"><code>rm(list=ls())
 # for data
 library(qiime2R) # read in Qiime artifacts
-library(dplyr) # data formatting</code></pre>
-<pre><code>## 
-## Attaching package: &#39;dplyr&#39;</code></pre>
-<pre><code>## The following objects are masked from &#39;package:stats&#39;:
-## 
-##     filter, lag</code></pre>
-<pre><code>## The following objects are masked from &#39;package:base&#39;:
-## 
-##     intersect, setdiff, setequal, union</code></pre>
-<pre class="r"><code>library(tidyverse) # data formatting</code></pre>
-<pre><code>## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-## ✔ forcats   1.0.0     ✔ readr     2.1.4
-## ✔ ggplot2   3.4.2     ✔ stringr   1.5.0
-## ✔ lubridate 1.9.2     ✔ tibble    3.2.1
-## ✔ purrr     1.0.1     ✔ tidyr     1.3.0</code></pre>
-<pre><code>## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-## ✖ dplyr::filter() masks stats::filter()
-## ✖ dplyr::lag()    masks stats::lag()
-## ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
-<pre class="r"><code># for computing
+library(dplyr) # data formatting
+library(tidyverse) # data formatting
+# for computing
 library(reticulate) # run py codes
-library(vegan) # distance matrix</code></pre>
-<pre><code>## Loading required package: permute
-## Loading required package: lattice
-## This is vegan 2.6-4</code></pre>
-<pre class="r"><code>library(PERMANOVA) # permanova</code></pre>
-<pre><code>## Loading required package: Matrix
-## 
-## Attaching package: &#39;Matrix&#39;
-## 
-## The following objects are masked from &#39;package:tidyr&#39;:
-## 
-##     expand, pack, unpack
-## 
-## Loading required package: xtable
-## Loading required package: MASS
-## 
-## Attaching package: &#39;MASS&#39;
-## 
-## The following object is masked from &#39;package:dplyr&#39;:
-## 
-##     select
-## 
-## Loading required package: scales
-## 
-## Attaching package: &#39;scales&#39;
-## 
-## The following object is masked from &#39;package:purrr&#39;:
-## 
-##     discard
-## 
-## The following object is masked from &#39;package:readr&#39;:
-## 
-##     col_factor
-## 
-## Loading required package: deldir
-## deldir 1.0-9      Nickname: &quot;Partial Distinction&quot;
-## 
-##      The syntax of deldir() has changed since version 
-##      0.0-10.  In particular the &quot;dummy points&quot; facility 
-##      (which was a historical artifact) has been removed. 
-##      In the current version, 1.0-8, an argument &quot;id&quot; has 
-##      been added to deldir().  This new argument permits the 
-##      user to specifier identifiers for points.  The default 
-##      behaviour is to continue using the indices of the 
-##      points to identify them.  In view of the fact that 
-##      point identifiers may be user-supplied, the arguement 
-##      &quot;number&quot;, in plot.deldir() and plot.tile.list(), has 
-##      had its name changed to &quot;labelPts&quot;, and the argument 
-##      &quot;nex&quot; in plot.deldir() has had its name changed to 
-##      &quot;lex&quot;.  In addition the name of the forth component 
-##      of the &quot;cmpnt_col&quot; argument in plot.deldir() has been 
-##      changed from &quot;num&quot; to &quot;labels&quot;.  There is a new 
-##      function getNbrs(), and the function tileInfo() has 
-##      been modified to include output from getNbrs(). 
-##      Please consult the help.
-## 
-## 
-## Attaching package: &#39;deldir&#39;
-## 
-## The following object is masked from &#39;package:permute&#39;:
-## 
-##     getCol</code></pre>
-<pre class="r"><code>library(randomForest) # random forest</code></pre>
-<pre><code>## randomForest 4.7-1.1
-## Type rfNews() to see new features/changes/bug fixes.
-## 
-## Attaching package: &#39;randomForest&#39;
-## 
-## The following object is masked from &#39;package:ggplot2&#39;:
-## 
-##     margin
-## 
-## The following object is masked from &#39;package:dplyr&#39;:
-## 
-##     combine</code></pre>
-<pre class="r"><code>library(PRROC) # roc and pr
-library(phyloseq) # phyloseq object</code></pre>
-<pre><code>## 
-## Attaching package: &#39;phyloseq&#39;
-## 
-## The following object is masked from &#39;package:reticulate&#39;:
-## 
-##     import</code></pre>
-<pre class="r"><code>library(ALDEx2) # differential abundance</code></pre>
-<pre><code>## Loading required package: zCompositions
-## Loading required package: NADA
-## Loading required package: survival
-## 
-## Attaching package: &#39;NADA&#39;
-## 
-## The following object is masked from &#39;package:stats&#39;:
-## 
-##     cor
-## 
-## Loading required package: truncnorm</code></pre>
-<pre class="r"><code># for plotting
-library(ggpubr)</code></pre>
-<pre><code>## 
-## Attaching package: &#39;ggpubr&#39;
-## 
-## The following object is masked from &#39;package:qiime2R&#39;:
-## 
-##     mean_sd</code></pre>
-<pre class="r"><code>library(ggplot2)
-library(gridExtra)</code></pre>
-<pre><code>## 
-## Attaching package: &#39;gridExtra&#39;
-## 
-## The following object is masked from &#39;package:randomForest&#39;:
-## 
-##     combine
-## 
-## The following object is masked from &#39;package:dplyr&#39;:
-## 
-##     combine</code></pre>
-<pre class="r"><code>library(RColorBrewer)
+library(vegan) # distance matrix
+library(PERMANOVA) # permanova
+library(randomForest) # random forest
+library(PRROC) # roc and pr
+library(phyloseq) # phyloseq object
+library(ALDEx2) # differential abundance
+
+# for plotting
+library(ggpubr)
+library(ggplot2)
+library(gridExtra)
+library(RColorBrewer)
 
 # set working directory to be where the current script is located
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
-source(&#39;../TEMPTED.R&#39;)</code></pre>
-<pre><code>## Nonparametric Kernel Methods for Mixed Datatypes (version 0.60-17)
-## [vignette(&quot;np_faq&quot;,package=&quot;np&quot;) provides answers to frequently asked questions]
-## [vignette(&quot;np&quot;,package=&quot;np&quot;) an overview]
-## [vignette(&quot;entropy_np&quot;,package=&quot;np&quot;) an overview of entropy-based methods]</code></pre>
-<pre class="r"><code>color_RB &lt;- brewer.pal(3,&#39;Set1&#39;)[1:2]</code></pre>
+source(&#39;../TEMPTED.R&#39;)
+color_RB &lt;- brewer.pal(3,&#39;Set1&#39;)[1:2]</code></pre>
 </div>
 <div id="read-in-the-count-data-and-meta-data" class="section level2">
 <h2>Read in the count data and meta data</h2>
@@ -826,7 +701,7 @@ p_all &lt;- grid.arrange(p_sub_box, p_bar, p_feat_ratio_summary, layout_matrix=l
 <pre class="r"><code>ggsave(&#39;../figure_table/vaginal_Stanford_plot.pdf&#39;, width=16, height=3.5, plot=p_all)</code></pre>
 </div>
 <div id="differential-abundance-using-adelx2" class="section level2">
-<h2>Differential abundance using Adelx2</h2>
+<h2>Differential abundance using ADELx2</h2>
 <pre class="r"><code>meta_concise &lt;- meta_tab[,c(&quot;PregID&quot;, &quot;PregOut&quot;, &quot;DayVsConc&quot;)]
 meta_concise &lt;- meta_concise %&gt;%
   mutate(WeekVsConc=floor(DayVsConc/7)) %&gt;%
@@ -865,7 +740,7 @@ table(meta_concise$WeekVsConc, meta_concise$PregOut)</code></pre>
 tm_uniq &lt;- 12:35
 tcount_tab &lt;- t(count_tab[rownames(meta_concise),])
 
-
+set.seed(0)
 res_aldex_all &lt;- vector(mode = &quot;list&quot;, length = length(tm_uniq))
 for (ii in 1:length(tm_uniq)){
   print(ii)
@@ -874,228 +749,86 @@ for (ii in 1:length(tm_uniq)){
   write.csv(tmp, file=paste0(&quot;result/res_aldex_wk&quot;, tm_uniq[ii], &quot;.csv&quot;))
   res_aldex_all[[ii]] &lt;- tmp
 }</code></pre>
-<pre><code>## [1] 1</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 2</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 3</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 4</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 5</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 6</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 7</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 8</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 9</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 10</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 11</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 12</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 13</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 14</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 15</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 16</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 17</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 18</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 19</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 20</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 21</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 22</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 23</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
-<pre><code>## [1] 24</code></pre>
-<pre><code>## aldex.clr: generating Monte-Carlo instances and clr values</code></pre>
-<pre><code>## operating in serial mode</code></pre>
-<pre><code>## computing center with all features</code></pre>
-<pre><code>## aldex.ttest: doing t-test</code></pre>
-<pre><code>## aldex.effect: calculating effect sizes</code></pre>
+<pre><code>## [1] 1
+## [1] 2
+## [1] 3
+## [1] 4
+## [1] 5
+## [1] 6
+## [1] 7
+## [1] 8
+## [1] 9
+## [1] 10
+## [1] 11
+## [1] 12
+## [1] 13
+## [1] 14
+## [1] 15
+## [1] 16
+## [1] 17
+## [1] 18
+## [1] 19
+## [1] 20
+## [1] 21
+## [1] 22
+## [1] 23
+## [1] 24</code></pre>
 <pre class="r"><code>for (ii in 1:length(res_aldex_all)){
-  print(ii)
   res_aldex_all[[ii]]$we.eFDR &lt;- p.adjust(res_aldex_all[[ii]]$we.ep, &quot;fdr&quot;)
+}
+saveRDS(res_aldex_all, file=&quot;result/res_aldex.RDS&quot;)</code></pre>
+<pre class="r"><code>res_aldex_all &lt;- readRDS(file=&quot;result/res_aldex.RDS&quot;)
+for (ii in 1:length(res_aldex_all)){
   print(summary(res_aldex_all[[ii]]$we.eFDR))
 }</code></pre>
-<pre><code>## [1] 1
+<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##  0.6114  0.6114  0.6114  0.6139  0.6114  0.7667 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6224  0.6224  0.6224  0.6244  0.6224  0.7898 
-## [1] 2
+##  0.6237  0.6237  0.6237  0.6291  0.6237  0.8689 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6330  0.6330  0.6330  0.6378  0.6330  0.8602 
-## [1] 3
+##  0.6379  0.6379  0.6379  0.6408  0.6379  0.8260 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6386  0.6386  0.6386  0.6409  0.6386  0.8158 
-## [1] 4
+##  0.6319  0.6319  0.6319  0.6365  0.6319  0.8227 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6358  0.6358  0.6358  0.6403  0.6358  0.8469 
-## [1] 5
+##  0.6064  0.6064  0.6064  0.6082  0.6064  0.8027 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6062  0.6062  0.6062  0.6080  0.6062  0.7986 
-## [1] 6
+##  0.6191  0.6191  0.6191  0.6218  0.6191  0.8299 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6160  0.6160  0.6160  0.6189  0.6160  0.8460 
-## [1] 7
+##  0.6092  0.6092  0.6092  0.6122  0.6092  0.7794 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6081  0.6081  0.6081  0.6107  0.6081  0.7779 
-## [1] 8
+##  0.6144  0.6144  0.6144  0.6171  0.6144  0.7732 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6121  0.6121  0.6121  0.6146  0.6121  0.7690 
-## [1] 9
+##  0.6146  0.6146  0.6146  0.6161  0.6146  0.8183 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6162  0.6162  0.6162  0.6179  0.6162  0.7869 
-## [1] 10
+##  0.6092  0.6092  0.6092  0.6112  0.6092  0.7675 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6072  0.6072  0.6072  0.6093  0.6072  0.7953 
-## [1] 11
+##  0.6183  0.6183  0.6183  0.6212  0.6183  0.8046 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6170  0.6170  0.6170  0.6199  0.6170  0.7702 
-## [1] 12
+##  0.6005  0.6005  0.6005  0.6026  0.6005  0.8064 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.5985  0.5985  0.5985  0.6010  0.5985  0.8285 
-## [1] 13
+##  0.6059  0.6059  0.6059  0.6076  0.6059  0.8196 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6074  0.6074  0.6074  0.6094  0.6074  0.8182 
-## [1] 14
+##  0.5996  0.5996  0.5996  0.6012  0.5996  0.7886 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.5985  0.5985  0.5985  0.6002  0.5985  0.8317 
-## [1] 15
+##  0.5984  0.5984  0.5984  0.6000  0.5984  0.7749 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6027  0.6027  0.6027  0.6040  0.6027  0.7756 
-## [1] 16
+##  0.6044  0.6044  0.6044  0.6070  0.6044  0.7663 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6104  0.6104  0.6104  0.6124  0.6104  0.7529 
-## [1] 17
+##  0.6098  0.6098  0.6098  0.6121  0.6098  0.8531 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6082  0.6082  0.6082  0.6103  0.6082  0.8347 
-## [1] 18
+##  0.6310  0.6310  0.6310  0.6340  0.6310  0.7955 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6249  0.6249  0.6249  0.6285  0.6249  0.8084 
-## [1] 19
+##  0.6291  0.6291  0.6291  0.6315  0.6291  0.7685 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6284  0.6284  0.6284  0.6311  0.6284  0.7706 
-## [1] 20
+##  0.5866  0.5866  0.5866  0.5883  0.5866  0.9094 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.5934  0.5934  0.5934  0.5949  0.5934  0.9073 
-## [1] 21
+##  0.5967  0.5967  0.5967  0.5999  0.5967  0.8196 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6017  0.6017  0.6017  0.6047  0.6017  0.8356 
-## [1] 22
+##  0.6180  0.6180  0.6180  0.6223  0.6180  0.8373 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6160  0.6160  0.6160  0.6204  0.6160  0.8252 
-## [1] 23
+##  0.6216  0.6216  0.6216  0.6249  0.6216  0.8034 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.6174  0.6174  0.6174  0.6210  0.6174  0.8110 
-## [1] 24
-##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  0.5988  0.5988  0.5988  0.6009  0.5988  0.9218</code></pre>
-<pre class="r"><code>saveRDS(res_aldex_all, file=&quot;result/res_aldex.RDS&quot;)</code></pre>
+##  0.5996  0.5996  0.5996  0.6019  0.5996  0.9169</code></pre>
 </div>
 </div>
 
