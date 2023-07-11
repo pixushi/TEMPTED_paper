@@ -207,12 +207,28 @@ for (ii in 1:npc){
 }
 taxtab <- read.csv("data/gg2-taxonomy.tsv", sep="\t", row.names=1)
 tab_ftnames <- cbind(tab_ftnames, taxtab[tab_ftnames$sequence,])
-tab_ftnames$dummy <- paste0("ASV", 1:nrow(tab_ftnames))
+tab_taxsplit <- t(matrix(unlist(lapply(tab_ftnames$Taxon, function(x){strsplit(x, "; ")[[1]]})), nrow=7))
+colnames(tab_taxsplit) <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+tab_ftnames <- cbind(tab_ftnames, tab_taxsplit)
+shortname <- tab_taxsplit[, "Species"]
+for (j in colnames(tab_taxsplit)[6:1]){
+  shortname[nchar(shortname)<=3] <- tab_taxsplit[nchar(shortname)<=3, j]
+}
+shortname <- tab_taxsplit[, "Species"]
+for (j in colnames(tab_taxsplit)[6:1]){
+  shortname[nchar(shortname)<=3] <- tab_taxsplit[nchar(shortname)<=3, j]
+}
+for (ii in 1:(length(shortname)-1)){
+  ind <- grep(shortname[ii], shortname)
+  if (length(ind)>1) {
+    shortname[ind[-1]] <- paste0(shortname[ind[-1]], "_", 1+1:length(ind[-1]))
+  }
+}
+tab_ftnames$shortname <- shortname
 write.csv(tab_ftnames, file="../figure_table/leukemia_topfeature.csv")
 ```
 
 ```{r plot_topfeat}
-pdf("../figure_table/leukemia_topfeat.pdf", height=5, width=10)
 for (ii in 2:3){
   tab_ftnames_pc <- dplyr::filter(tab_ftnames, PC==ii)
   topfeat_pc <- tab_ftnames_pc$sequence
@@ -229,18 +245,26 @@ for (ii in 2:3){
   nfeat <- ncol(feat_mat_pc)
 
   tab_topfeat <- data.frame(RA=as.vector(as.matrix(feat_mat_pc)),
-                            feature=rep(tab_ftnames_pc$dummy, each=nrow(feat_mat_pc)),
+                            feature=rep(tab_ftnames_pc$shortname, each=nrow(feat_mat_pc)),
                             time=rep(meta_pc$week, nfeat),
                             group=rep(meta_pc[,ifelse(ii==2, "group", "genotype")], nfeat),
                             hostID=rep(meta_pc$hostID, nfeat))
   p_topfeat <- ggplot(data=tab_topfeat) + 
     geom_point(aes(x=time, y=RA, color=group), size=0.8) + 
-    facet_wrap(vars(feature), nrow=2, scales="free_y") + theme_bw() + 
+    facet_wrap(vars(feature), nrow=3) + 
+    theme_bw() + 
     labs(x="Week", y="Relative Abundance", color=ifelse(ii==2, "Outcome", "Genotype")) + 
-    ggtitle(paste0("Top Features Identified by PC", ii)) + theme(legend.position="bottom")
+    ggtitle(paste0("Top Features Identified by PC", ii)) + theme(legend.position="bottom") + 
+     coord_trans(y="sqrt")
+  if (ii==2){
+    p_topfeat <- p_topfeat + geom_vline(xintercept = 35, linetype="dashed", 
+                color = "grey", size=1)
+  }
+  pdf(paste0("../figure_table/leukemia_topfeat", ii, ".pdf"), height=5, width=10)
   print(p_topfeat)
+  dev.off()
 }
-dev.off()
+
 ```
 
 

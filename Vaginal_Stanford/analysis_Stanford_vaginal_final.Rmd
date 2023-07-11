@@ -26,6 +26,7 @@ library(PERMANOVA) # permanova
 library(randomForest) # random forest
 library(PRROC) # roc and pr
 library(phyloseq) # phyloseq object
+library(ALDEx2) # differential abundance
 
 # for plotting
 library(ggpubr)
@@ -82,6 +83,8 @@ p_timeline <- ggplot(data=meta_ordered,
         panel.grid.minor = element_blank(),
         panel.grid.major = element_blank()) +
   geom_vline(xintercept=c(12,37)*7, linetype="dashed")
+print(p_timeline)
+
 pdf('../figure_table/vaginal_Stanford_timeline.pdf', width=11.5, height=7.5)
 print(p_timeline)
 dev.off()
@@ -137,7 +140,7 @@ p_time
 
 ## Plot subject loadings
 
-```{r}
+```{r subj_loading}
 metauni <- unique(meta_tab[,c('PregID', 'PregOut')])
 rownames(metauni) <- metauni$PregID
 table(metauni$PregOut)
@@ -243,9 +246,43 @@ p_bar
 
 
 
-```{r fig.width=16, fig.height=3.5}
+```{r fig_for_paper, fig.width=16, fig.height=3.5}
 lay <- matrix(c(1,1,2,2,2,2,3,3,3),1,)
 p_all <- grid.arrange(p_sub_box, p_bar, p_feat_ratio_summary, layout_matrix=lay)
 ggsave('../figure_table/vaginal_Stanford_plot.pdf', width=16, height=3.5, plot=p_all)
 ```
+
+
+## Differential abundance using Adelx2
+
+```{r run_aldex}
+meta_concise <- meta_tab[,c("PregID", "PregOut", "DayVsConc")]
+meta_concise <- meta_concise %>%
+  mutate(WeekVsConc=floor(DayVsConc/7)) %>%
+  dplyr::select(., -DayVsConc) %>%
+  distinct()
+tm <- meta_concise$WeekVsConc
+table(meta_concise$WeekVsConc, meta_concise$PregOut)
+# test for week 12-35 since week 36 only has 3 preterm samples
+tm_uniq <- 12:35
+tcount_tab <- t(count_tab[rownames(meta_concise),])
+
+
+res_aldex_all <- vector(mode = "list", length = length(tm_uniq))
+for (ii in 1:length(tm_uniq)){
+  print(ii)
+  tmp <- aldex(tcount_tab[,tm==tm_uniq[ii]],
+               meta_concise$PregOut[tm==tm_uniq[ii]])
+  write.csv(tmp, file=paste0("result/res_aldex_wk", tm_uniq[ii], ".csv"))
+  res_aldex_all[[ii]] <- tmp
+}
+
+for (ii in 1:length(res_aldex_all)){
+  print(ii)
+  res_aldex_all[[ii]]$we.eFDR <- p.adjust(res_aldex_all[[ii]]$we.ep, "fdr")
+  print(summary(res_aldex_all[[ii]]$we.eFDR))
+}
+saveRDS(res_aldex_all, file="result/res_aldex.RDS")
+```
+
 

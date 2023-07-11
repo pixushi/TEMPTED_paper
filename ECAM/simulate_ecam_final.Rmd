@@ -642,6 +642,9 @@ tab_auc_subj_summary <- merge(tab1, tab2)
 tab_auc_subj_summary$nsample <- factor(tab_auc_subj_summary$nsample, 
                                      level=as.character(nkeep))
 
+ann_text <- tab_auc_subj_summary[2,]
+ann_text$mean <- 0.515
+ann_text$nsample <- 7
 color_method <- c('#33a02c', #green for CTF
                   '#377eb8') #blue for TEMPTED
 p_subj_roc <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="ROC"), 
@@ -650,6 +653,8 @@ p_subj_roc <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="ROC"),
   geom_point(size=2, position=position_dodge(0.5)) +
   geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
                 position=position_dodge(0.5), size=1) + 
+  geom_hline(yintercept=0.5, linetype="dotted", color = "black", size=1) +
+  geom_text(data = ann_text,label = "At random", color="black") +
   facet_wrap(.~classify) +
   labs(y='AUC-ROC error', x='# time points') + 
   ggtitle("Subject Level") +
@@ -663,6 +668,8 @@ p_subj_pr <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="PR"),
   geom_point(size=2, position=position_dodge(0.5)) +
   geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
                 position=position_dodge(0.5), size=1) + 
+  geom_hline(yintercept=0.5, linetype="dotted", color = "black", size=1) +
+  geom_text(data = ann_text,label = "At random", color="black") +
   facet_wrap(.~classify) +
   labs(y='AUC-PR error', x='# time points')+
   ggtitle("Subject Level") +
@@ -848,11 +855,11 @@ lgd <- get_legend(p_lgd)
 ## Print plot for manuscript
 
 ```{r plot_all}
-lay <- rbind(c(1,2,2),c(1,2,2),c(1,2,2),c(1,2,2),c(1,2,2),
+lay <- rbind(c(1,1,2),c(1,1,2),c(1,1,2),c(1,1,2),c(1,1,2),
              c(3,3,3))
-p_all <- grid.arrange(p_Fmodel_summary + theme(legend.position="none"), 
-             p_subj_pr + theme(legend.position="none"),
-             lgd,
-             layout_matrix=lay)
-ggsave('../figure_table/realsim_ecam.pdf', width=12, height=5, plot=p_all)
+p_all <- grid.arrange(p_subj_pr + theme(legend.position="none"),
+                      p_Fmodel_summary + theme(legend.position="none"), 
+                      lgd,
+                      layout_matrix=lay)
+ggsave('../figure_table/realsim_ecam.pdf', width=10, height=5, plot=p_all)
 ```
