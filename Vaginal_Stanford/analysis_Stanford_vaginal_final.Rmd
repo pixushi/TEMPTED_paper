@@ -19,6 +19,9 @@ rm(list=ls())
 library(qiime2R) # read in Qiime artifacts
 library(dplyr) # data formatting
 library(tidyverse) # data formatting
+library(xlsx)
+library(rJava)
+
 # for computing
 library(reticulate) # run py codes
 library(vegan) # distance matrix
@@ -273,20 +276,26 @@ for (ii in 1:length(tm_uniq)){
   print(ii)
   tmp <- aldex(tcount_tab[,tm==tm_uniq[ii]],
                meta_concise$PregOut[tm==tm_uniq[ii]])
-  write.csv(tmp, file=paste0("result/res_aldex_wk", tm_uniq[ii], ".csv"))
+  print(ii)
+  gc()
+  .jcall("java/lang/System", method = "gc")
+  write.xlsx(tmp, file="../figure_table/Table_S2_vaginal_16S_ALDEx2.xlsx", sheetName=paste0("Week_", tm_uniq[ii]), append=ifelse(ii==1,FALSE,TRUE))
   res_aldex_all[[ii]] <- tmp
 }
 
-for (ii in 1:length(res_aldex_all)){
-  res_aldex_all[[ii]]$we.eFDR <- p.adjust(res_aldex_all[[ii]]$we.ep, "fdr")
-}
 saveRDS(res_aldex_all, file="result/res_aldex.RDS")
 ```
 
 ```{r}
 res_aldex_all <- readRDS(file="result/res_aldex.RDS")
 for (ii in 1:length(res_aldex_all)){
-  print(summary(res_aldex_all[[ii]]$we.eFDR))
+  print(paste("Week", tm_uniq[ii]))
+  print(summary(res_aldex_all[[ii]]$we.eBH))
+}
+
+for (ii in 1:length(res_aldex_all)){
+  print(paste("Week", tm_uniq[ii]))
+  print(summary(res_aldex_all[[ii]]$wi.eBH))
 }
 ```
 
