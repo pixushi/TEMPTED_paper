@@ -200,10 +200,10 @@ tab_ftnames <- NULL
 for (ii in 1:npc){
   tab_ftnames <- rbind(tab_ftnames, 
                        data.frame(sequence=ftnames[ratio_feat$toppct[,ii]],
-                                  PC=ii, rank="Top"))
+                                  Component=ii, rank="Top"))
   tab_ftnames <- rbind(tab_ftnames, 
                        data.frame(sequence=ftnames[ratio_feat$bottompct[,ii]],
-                                  PC=ii, rank="Bottom"))
+                                  Component=ii, rank="Bottom"))
 }
 taxtab <- read.csv("data/gg2-taxonomy.tsv", sep="\t", row.names=1)
 tab_ftnames <- cbind(tab_ftnames, taxtab[tab_ftnames$sequence,])
@@ -230,7 +230,7 @@ write.csv(tab_ftnames, file="../figure_table/leukemia_topfeature.csv")
 
 ```{r plot_topfeat}
 for (ii in 2:3){
-  tab_ftnames_pc <- dplyr::filter(tab_ftnames, PC==ii)
+  tab_ftnames_pc <- dplyr::filter(tab_ftnames, Component==ii)
   topfeat_pc <- tab_ftnames_pc$sequence
   
   prop_all <- (count_all)/rowSums(count_all)
@@ -254,7 +254,7 @@ for (ii in 2:3){
     facet_wrap(vars(feature), nrow=3) + 
     theme_bw() + 
     labs(x="Week", y="Relative Abundance", color=ifelse(ii==2, "Outcome", "Genotype")) + 
-    ggtitle(paste0("Top Features Identified by PC", ii)) + theme(legend.position="bottom") + 
+    ggtitle(paste0("Top Features Identified by Component ", ii)) + theme(legend.position="bottom") + 
      coord_trans(y="sqrt")
   if (ii==2){
     p_topfeat <- p_topfeat + geom_vline(xintercept = 35, linetype="dashed", 
@@ -349,7 +349,8 @@ read_traj <- function(file){
 }
 ctf_traj <- as.data.frame(read_traj("result/state-subject-ordination_leukemia.qza")$data)
 ctf_traj$group <- meta_all[ctf_traj$`#SampleID`, "group"]
-p_traj <- plot_feature_summary(ctf_traj[,c("PC1","PC2")], 
+colnames(ctf_traj)[2:4] <- paste("Component", 1:3)
+p_traj <- plot_feature_summary(ctf_traj[,c("Component 1","Component 2")], 
                      ctf_traj$week_int, 
                      ctf_traj$group,
                      bws=bws) + 
@@ -411,6 +412,10 @@ mds_mat_all$group <- factor(mds_mat_all$group,
                             levels=c("healthy wild type", "predisposed, remained healthy", "predisposed, developed pB-ALL"))
 colnames(mds_mat_all)
 mds_mat_all$method <- as.factor(mds_mat_all$method)
+levels(mds_mat_all$method)
+levels(mds_mat_all$method) <- c("Bray-Curtis", "Jaccard", "UniFrac", "Weighted UniFrac")
+names(dm_list)
+names(dm_list) <- c("UniFrac", "Weighted UniFrac", "Bray-Curtis", "Jaccard")
 ```
 
 
@@ -521,7 +526,7 @@ Wval_wilcox_late["TEMPTED","PC.2"] <- wilcox_tempted$statistic
 # for CTF
 ctf_traj_late <- dplyr::filter(ctf_traj, week_int>=35 & week_int<=70 & 
   group!='healthy wild type')
-wilcox_ctf <-  wilcox.test(ctf_traj_late$PC1~ctf_traj_late$group)
+wilcox_ctf <-  wilcox.test(ctf_traj_late$`Component 1`~ctf_traj_late$group)
 pval_wilcox_late["CTF","PC.1"] <- wilcox_ctf$p.value
 Wval_wilcox_late["CTF","PC.1"] <- wilcox_ctf$statistic
 
@@ -529,6 +534,7 @@ tab_summary_all$method <- factor(tab_summary_all$method,
                                  levels=unique(tab_summary_all$method))
 tab_summary_all$feature <- factor(tab_summary_all$feature, 
                                   levels=unique(tab_summary_all$feature))
+levels(tab_summary_all$feature) <- paste0("Component ", 1:3)
 p_summary <- ggplot(data=tab_summary_all, 
                     aes(x=time, y=mean, group=group, color=group)) + 
   geom_line() + theme_bw()+ 
@@ -548,6 +554,7 @@ dev.off()
 
 # Wilcoxon rank test
 pval_wilcox_late
+colnames(pval_wilcox_late) <- paste("Component", 1:3)
 write.csv(pval_wilcox_late, '../figure_table/leukemia_wilcox_pcoa.csv')
 ```
 

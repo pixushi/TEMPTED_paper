@@ -148,9 +148,9 @@ dev.off()
 tab_Fmodel <- read.csv("result/perm-res.csv", row.names=1)
 tab_Fmodel$metric[tab_Fmodel$metric=="FT-SVD"] <- "TEMPTED"
 tab_Fmodel <- dplyr::filter(tab_Fmodel, seq_depth>=50000 & metric!="Jaccard")
-tab_Fmodel$seq_depth <- paste0("Seq. Depth = ", tab_Fmodel$seq_depth/1000, "K")
+tab_Fmodel$seq_depth <- paste0("Reads Per Sample = ", tab_Fmodel$seq_depth/1000, "K")
 tab_Fmodel$seq_depth <- factor(tab_Fmodel$seq_depth, levels=
-                                 c("Seq. Depth = 50K", "Seq. Depth = 100K", "Seq. Depth = 150K"))
+                                 c("Reads Per Sample = 50K", "Reads Per Sample = 100K", "Reads Per Sample = 150K"))
 
 tab1 <- aggregate(test.statistic~n_samples+metric+seq_depth, data=tab_Fmodel, 
                   FUN=mean)
@@ -172,7 +172,7 @@ p_Fmodel_summary <- ggplot(data=tab_Fmodel_summary,
   facet_grid(~seq_depth) +
   scale_x_continuous(breaks=2:10) + 
   scale_color_manual(values=color_method) +
-  ylab('PERMANOVA F value') + xlab('# time points') + 
+  ylab('PERMANOVA F-value') + xlab('Number of Time Points') + 
   theme_bw() + 
   theme(legend.position = "bottom")
 p_Fmodel_summary
