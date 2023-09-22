@@ -1,8 +1,6 @@
-.DS_Store
-ECAM/.DS_Store
-Vaginal/.DS_Store
-ECAM/.Rapp.history
-.Rapp.history
+*.DS_Store
+*.Rhistory
+*.Rapp.history
 ECAM/simresult_ctf/
 ECAM/simresult_tcam/
 ECAM/simresult_tempted/
