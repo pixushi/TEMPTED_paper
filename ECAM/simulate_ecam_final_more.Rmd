@@ -15,12 +15,13 @@ output:
 ```{r}
 rm(list=ls())
 # for computing
-#reticulate::use_condaenv(condaenv="/hpc/home/ps294/miniconda")
 library(reticulate) # run py codes
 library(vegan) # distance matrix
 library(PERMANOVA) # permanova
 library(randomForest) # random forest
 library(PRROC) # roc and pr
+library(tempted)
+library(microTensor)
 
 # for data
 library(qiime2R) # read in Qiime artifacts
@@ -31,8 +32,6 @@ library(ggpubr)
 library(ggplot2)
 library(gridExtra)
 library(RColorBrewer)
-library(tempted)
-
 
 # set working directory to be where the current script is located
 mydir <- dirname(rstudioapi::getSourceEditorContext()$path)
@@ -1079,9 +1078,7 @@ tab_Fmodel_summary <- merge(tab1, tab2)
 
 color_method <- c('#ff7f00', #orange for Bray
                   '#33a02c', #green for CTF
-#                  '#00FFFF', #yellow for EMBED
                   '#0096FF', #blue for microTensor
-#                  '#f525dd', #pink for TCAM
                   '#5A5A5A', #gray for TEMPTED
                   '#7F00FF', #purple for Unifrac
                   '#e31a1c') #red for unweighted Unifrac
@@ -1109,14 +1106,13 @@ dev.off()
 ```{r get_legend}
 color_method <- c('#ff7f00', #orange for Bray
                   '#33a02c', #green for CTF
-                  '#00FFFF', #yellow for EMBED
                   '#0096FF', #blue for microTensor
                   '#f525dd', #pink for TCAM
                   '#5A5A5A', #gray for TEMPTED
                   '#7F00FF', #purple for Unifrac
                   '#e31a1c') #red for unweighted Unifrac
 mm <- length(color_method)
-tab_lgd <- data.frame(Method=rep(c("Bray-Curtis", "CTF", "EMBED", "microTensor", "TCAM",
+tab_lgd <- data.frame(Method=rep(c("Bray-Curtis", "CTF", "microTensor", "TCAM",
                                "TEMPTED", "UniFrac","Weighted UniFrac"),4),
                       value=rnorm(4*mm), time=rep(1:4, each=mm),
                       Type=c(rep("In-Sample",each=2*mm), rep("Out-of-Sample", each=2*mm)))
