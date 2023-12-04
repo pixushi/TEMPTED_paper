@@ -2,7 +2,10 @@
 title: "Plot Result from Vaginal Microbiome Study"
 author: "Pixu Shi"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document:
+    toc: true
+    theme: united
 ---
 
 ## Preparation
@@ -59,9 +62,7 @@ p_bar
 ```
 
 
-
-
-## Plot log ratio trajectory plot
+## Plot trajectory of log ratios
 
 ```{r log_ratio}
 ratio_vaginal <- read.csv("result/Vaginal_microbiome_log_ratios_per_sample_Pixu.csv", row.names=1, sep=",")
@@ -115,7 +116,7 @@ dev.off()
 
 
 
-## plot boxplot of subject loading
+## Plot boxplot of subject loading
 
 ```{r subj_loading}
 sub_vaginal <- read.csv("result/Vaginal_microbiome_subject_loadings.csv",
@@ -142,7 +143,7 @@ dev.off()
 ```
 
 
-## plot simulation results for PEMANOVA F
+## Plot simulation results for PEMANOVA F
 
 ```{r simulation}
 tab_Fmodel <- read.csv("result/perm-res.csv", row.names=1)
@@ -163,7 +164,8 @@ tab_Fmodel_summary <- merge(tab1, tab2)
 
 color_method <- c('#ff7f00', #orange for Bray
                   '#33a02c', #green for CTF
-                  '#377eb8') #blue for TEMPTED
+#                  '#0096FF', #blue for microTensor
+                  '#5A5A5A') #gray for TEMPTED
 p_Fmodel_summary <- ggplot(data=tab_Fmodel_summary, 
                            aes(x=n_samples, y=mean, group=metric, color=metric)) + 
   geom_line(size=1) + geom_point(position=position_dodge(0.2), size=2) +
