@@ -104,15 +104,17 @@ datlist_conc <- format_tempted(count_tab, meta_tab$DayVsConc, meta_tab$PregID,
 datlist_raw_conc <- format_tempted(count_tab, meta_tab$DayVsConc, meta_tab$PregID, 
                                   threshold=0.95, transform='none')
 npc <- 2
+```
+
+```{r run_tempted_false, eval=FALSE}
 svd_conc <- svd_centralize(datlist_conc, 1)
 res_tempted_conc <- tempted(svd_conc$datlist, r = npc, resolution = 51, smooth=1e-3)
-
-
 save(ps_filtered, 
      svd_conc, res_tempted_conc, datlist_conc, datlist_raw_conc,
      file='result/res_delivery_tempted.Rdata')
+```
 
-
+```{r}
 load('result/res_delivery_tempted.Rdata')
 count_tab <- data.frame(otu_table(ps_filtered))
 meta_tab <- data.frame(sample_data(ps_filtered))
@@ -124,20 +126,15 @@ npc <- 2
 ```
 
 
-
-
-
 ## Plot time loading
 
-```{r time_loading}
+```{r time_loading, fig.height=3, fig.width=3}
 p_time <- plot_time_loading(res_tempted, r=npc) +
   labs(x='Week', y="Temporal Loading", title=" ", color="Component") + 
   geom_line(size=1.5) + theme_bw() + 
   theme(legend.position='bottom')
 p_time
-
 ```
-
 
 
 
@@ -155,7 +152,6 @@ A_hat <- cbind(res_tempted$A_hat[,1:npc], A_hat)
 A_hat$PregOut <- as.factor(A_hat$PregOut)
 
 pval <- round(wilcox.test(A_hat$`Component 1`~A_hat$PregOut)$p.value,4)
-pval
 p_sub_box <- ggplot(A_hat) + 
   geom_boxplot(aes(x=PregOut, y=`Component 1`, fill=PregOut)) + 
   theme_bw() + scale_fill_manual(values=color_RB) + 
@@ -163,6 +159,16 @@ p_sub_box <- ggplot(A_hat) +
   theme(legend.position="none") +
   annotate("text", x=1.5, y=0.15, label= paste0("p-value = ", pval))
 p_sub_box
+
+pval2 <- round(wilcox.test(A_hat$`Component 2`~A_hat$PregOut)$p.value,4)
+p_sub_box2 <- ggplot(A_hat) + 
+  geom_boxplot(aes(x=PregOut, y=`Component 2`, fill=PregOut)) + 
+  theme_bw() + scale_fill_manual(values=color_RB) + 
+  labs(x="Outcome") + 
+  theme(legend.position="none") +
+  annotate("text", x=1.5, y=0.15, label= paste0("p-value = ", pval2))
+
+grid.arrange(p_sub_box, p_sub_box2, nrow=1)
 ```
 
 ## Plot trajectory of log ratio of total abundance of top features
@@ -207,7 +213,6 @@ p_feat_ratio_summary <- plot_feature_summary(feature_mat_ratio1,
   scale_x_continuous(breaks=seq(from=84,to=294,by=28)) + ylim(c(-3.5, 7.5))+
   theme(strip.text = element_blank(), 
         strip.background = element_blank())
-p_feat_ratio_summary
 ```
 
 
@@ -224,7 +229,6 @@ tab_taxa <-as.data.frame(tab_taxa)
 tab_taxa$loading_PC1 <- res_tempted$B_hat[rownames(tab_taxa),1]
 write.csv(tab_taxa, file="../figure_table/vaginal_Stanford_topfeat.csv")
 rownames(tab_taxa) <- NULL
-tab_taxa
 
 # barplot
 tab_taxa <- tab_taxa %>% mutate(outcome=ifelse(loading_PC1<0,"Preterm","Term"))
@@ -242,8 +246,6 @@ p_bar <- tab_taxa %>%
   coord_flip() + 
   labs(y = "Component 1", x = "") + 
   theme(legend.position="none")
-
-p_bar
 ```
 
 
@@ -255,10 +257,185 @@ p_all <- grid.arrange(p_sub_box, p_bar, p_feat_ratio_summary, layout_matrix=lay)
 ggsave('../figure_table/vaginal_Stanford_plot.pdf', width=16, height=3.5, plot=p_all)
 ```
 
+# microTensor
 
-## Differential abundance using ADELx2
+## Run microTensor
 
-```{r run_aldex, message=FALSE}
+Format data
+
+```{r prep_microtensor}
+count_mat <- count_tab[,colMeans(count_tab==0)<0.95]
+meta_mat <- meta_tab[,c("SpecimenBarcode", "PregID", "PregOut", "DayVsConc")]
+meta_mat$time_disc <- round(meta_tab$DayVsConc/7)
+tm <- sort(unique(meta_mat$time_disc))
+metauni <- unique(meta_mat[,c("PregID", "PregOut")])
+rownames(metauni) <- metauni$PregID
+      
+X_array <- array(NA, dim = c(ncol(count_mat),
+                         length(unique(meta_mat$PregID)),
+                         length(tm)))
+dimnames(X_array) <- list(colnames(count_mat),
+                          unique(meta_tab$PregID),
+                          tm)
+for(k in 1:length(tm)) {
+  k_df_samples <- meta_mat %>% 
+    dplyr::filter(time_disc == tm[k])
+  k_df_samples <- k_df_samples[!duplicated(k_df_samples$PregID),]
+  X_array[, k_df_samples$PregID, k] <- 
+    t(count_mat[rownames(k_df_samples), ])
+}
+mean(is.na(X_array)) # check proportion of NAs
+```
+
+Run microTensor
+
+```{r run_microtensor}
+set.seed(1)
+fit_microTensor <- 
+  microTensor::microTensor(X = X_array, R = npc, 
+                           nn_t = TRUE, ortho_m = TRUE,
+                           weighted = TRUE)
+save(X_array, fit_microTensor, file="result/result_microtensor.Rdata")
+# save subject scores
+micro_sub <- as.data.frame(fit_microTensor$s)
+colnames(micro_sub) <- paste0("PC",1:npc)
+micro_sub$PregID <- dimnames(X_array)[[2]]
+micro_sub <- merge(metauni, micro_sub)
+write.csv(micro_sub, file="result/subject_microtensor.csv")
+
+# save trajectories
+micro_traj <- microTensor::create_loading(fit_decomp = fit_microTensor,
+                                          feature_names = dimnames(X_array)[[1]],
+                                          subject_names = dimnames(X_array)[[2]],
+                                          time_names = tm,
+                                          class = "sample")
+colnames(micro_traj) <- c("PregID", "time_disc", paste0("PC",1:npc))
+micro_traj <- merge(meta_mat[,c("SpecimenBarcode", "PregID", "PregOut", "DayVsConc", "time_disc")], micro_traj)
+write.csv(micro_traj, file="result/trajectory_microtensor.csv")
+
+# save feature loading
+micro_feat <- as.data.frame(fit_microTensor$m)
+colnames(micro_feat) <- paste0("PC", 1:2)
+rownames(micro_feat) <- dimnames(X_array)[[1]]
+write.csv(micro_feat, file="result/feature_microtensor.csv")
+```
+
+## Plot subject loadings
+
+```{r subject_microtensor}
+micro_sub <- read.csv(file="result/subject_microtensor.csv", row.names=1, header=T)
+## boxplot of subject loading
+# Component 1
+pval1 <- round(wilcox.test(micro_sub$PC1~micro_sub$PregOut)$p.value,4)
+pval1
+p_sub_box1 <- ggplot(micro_sub) + 
+  geom_boxplot(aes(x=PregOut, y=PC1, fill=PregOut)) + 
+  theme_bw() + scale_fill_manual(values=color_RB) + 
+  labs(x="Outcome") + 
+  theme(legend.position="none") +
+  annotate("text", x=1.5, y=0.15, label= paste0("p-value = ", pval1))
+# Component 2
+pval2 <- round(wilcox.test(micro_sub$PC2~micro_sub$PregOut)$p.value,4)
+pval2
+p_sub_box2 <- ggplot(micro_sub) + 
+  geom_boxplot(aes(x=PregOut, y=PC2, fill=PregOut)) + 
+  theme_bw() + scale_fill_manual(values=color_RB) + 
+  labs(x="Outcome") + 
+  theme(legend.position="none") +
+  annotate("text", x=1.5, y=0.15, label= paste0("p-value = ", pval2))
+
+grid.arrange(p_sub_box1, p_sub_box2, nrow=1)
+```
+
+## Plot feature loadings
+
+```{r feature_microtensor}
+micro_feat <- read.csv("result/feature_microtensor.csv", row.names=1, header=T)
+
+## highlight top features
+toppct <- matrix(NA, nrow(micro_feat), 2)
+colnames(toppct) <- paste0("PC", 1:2)
+rownames(toppct) <- rownames(micro_feat)
+bottompct <- toppct
+# Component 1
+q1 <- quantile(abs(micro_feat[,1]), 0.95)
+sel1 <- 
+toppct[,1] <- abs(micro_feat[,1]) > q1 & micro_feat[,1] > q1
+bottompct[,1] <- abs(micro_feat[,1]) > q1 & micro_feat[,1] < -q1
+# Component 2
+q2 <- quantile(abs(micro_feat[,2]), 0.95)
+sel2 <- 
+toppct[,2] <- abs(micro_feat[,2]) > q2 & micro_feat[,2] >= q2
+bottompct[,2] <- abs(micro_feat[,2]) > q2 & micro_feat[,2] <= -q2
+
+## Scatterplot of feature loading to show its distribution
+p_feat_scatter <- 
+  ggplot(data=micro_feat) + 
+  geom_point(aes(x=PC1, y=PC2)) + 
+  theme_bw() +
+  geom_hline(yintercept=c(q2, -q2), linetype=2) + 
+  geom_vline(xintercept=c(q1, -q1), linetype=2)
+  
+p_feat_scatter
+
+## barplot of top features in each component
+for (k in 1:2){
+  # taxanomic information of top and bottom bacteria
+  tnames <- c(names(which(toppct[,k])),names(which(bottompct[,k])))
+  tab_taxa <- rbind(tax_table(ps_filtered)[tnames,])
+  tab_taxa <-as.data.frame(tab_taxa)
+  tab_taxa$loading_PC <- micro_feat[rownames(tab_taxa),k]
+  write.xlsx(tab_taxa,
+             file="../figure_table/vaginal_Stanford_topfeat_microTensor.xlsx", 
+             sheetName=paste("Component", k), 
+             append=ifelse(k==1,FALSE,TRUE))
+  rownames(tab_taxa) <- NULL
+
+  tab_taxa <- tab_taxa %>% mutate(outcome=ifelse(loading_PC<0,"Preterm","Term"))
+  tab_taxa$label <- paste0(substring(tab_taxa$asvLab, 6, 50), " ",
+                                 tab_taxa$asvNum)
+  tab_taxa <- tab_taxa %>% arrange(-loading_PC)
+  tab_taxa$label <- factor(tab_taxa$label, levels=unique(tab_taxa$label))
+  
+  p_bar2 <- tab_taxa %>% 
+    ggplot(aes(x=label, y=loading_PC)) + 
+    geom_bar(stat="identity", colour="black", width = 0.5, aes(fill = outcome)) + 
+    geom_hline(yintercept = 0) +
+    theme_bw() +
+    scale_fill_manual(values=color_RB) +
+    coord_flip() + 
+    labs(y = paste("Component",k), x = "") + 
+    theme(legend.position="none")
+  if (k==1) p_bar1 <- p_bar2
+}
+
+grid.arrange(p_bar1, p_bar2, nrow=1)
+```
+
+
+## Plot trajectories of top feature ratio
+
+```{r}
+micro_traj <- read.csv(file="result/trajectory_microtensor.csv", header=T, row.names=1)
+colnames(micro_traj)[6:7] <- paste("Component", 1:2)
+p_traj <- plot_feature_summary(micro_traj[,c("Component 1","Component 2")], 
+                     micro_traj$time_disc, 
+                     micro_traj$PregOut,
+                     bws=12/7) + 
+  xlab('Week') + theme_bw() + 
+  theme(legend.position='bottom') +
+  scale_color_manual(values=color_RB) + 
+  scale_fill_manual(values=color_RB)
+
+lay <- matrix(c(1,1,2,2,2,2,3,3,3),1,)
+p_all <- grid.arrange(p_sub_box1, p_bar1, p_traj, layout_matrix=lay)
+ggsave('../figure_table/vaginal_Stanford_plot_microtensor.pdf', width=16, height=3.5, plot=p_all)
+```
+
+
+# Differential abundance using ADELx2
+
+```{r prep_aldex}
 meta_concise <- meta_tab[,c("PregID", "PregOut", "DayVsConc")]
 meta_concise <- meta_concise %>%
   mutate(WeekVsConc=floor(DayVsConc/7)) %>%
@@ -269,14 +446,14 @@ table(meta_concise$WeekVsConc, meta_concise$PregOut)
 # test for week 12-35 since week 36 only has 3 preterm samples
 tm_uniq <- 12:35
 tcount_tab <- t(count_tab[rownames(meta_concise),])
+```
 
+```{r run_aldex, message=FALSE, eval=FALSE}
 set.seed(0)
 res_aldex_all <- vector(mode = "list", length = length(tm_uniq))
 for (ii in 1:length(tm_uniq)){
-  print(ii)
   tmp <- aldex(tcount_tab[,tm==tm_uniq[ii]],
                meta_concise$PregOut[tm==tm_uniq[ii]])
-  print(ii)
   gc()
   .jcall("java/lang/System", method = "gc")
   write.xlsx(tmp, file="../figure_table/Table_S2_vaginal_16S_ALDEx2.xlsx", sheetName=paste0("Week_", tm_uniq[ii]), append=ifelse(ii==1,FALSE,TRUE))
