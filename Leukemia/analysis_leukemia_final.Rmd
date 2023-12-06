@@ -14,12 +14,15 @@ output:
 ## Library
 
 ```{r prep, message=FALSE}
+reticulate::use_condaenv("/Users/pixushi/miniconda3/envs/qiime2-2021.2")
 rm(list=ls())
 # for data 
 library(readr) # read tsv
 library(qiime2R) # read in Qiime artifacts
 library(dplyr) # data formatting
 library(yaml) # for read_qza() in qiime2R
+library(tidyr)
+
 # for computing
 library(reticulate) # run py codes
 library(phyloseq) # phyloseq object
@@ -27,6 +30,8 @@ library(vegan) # distance matrix
 library(PERMANOVA) # permanova
 library(randomForest) # random forest
 library(PRROC) # roc and pr
+library(tempted)
+library(microTensor)
 # for plotting
 library(ggpubr)
 library(ggplot2)
@@ -115,12 +120,11 @@ datlist <- datlist_all
 
 ## Plot TEMPTED time loading
 
-```{r time_loading, fig.width = 3, fig.height=3}
-p_time <- plot_time_loading(res_tempted, r=3) + scale_color_manual(values=col_microbe) + 
+```{r time_loading}
+p_time_tempted <- plot_time_loading(res_tempted, r=3) + scale_color_manual(values=col_microbe) + 
   labs(x='Week', y="Temporal Loading", color="Component") + 
-  geom_line(size=1.5) + theme_bw() + 
+  geom_line(linewidth=1.5) + theme_bw() + 
   theme(legend.position='bottom')
-p_time
 ```
 
 
@@ -133,21 +137,21 @@ table(rownames(A_hat)==rownames(res_tempted$A_hat))
 A_hat <- cbind(res_tempted$A_hat[,1:3], A_hat)
 A_hat$group <- factor(A_hat$group, 
   levels=c("healthy wild type", "predisposed, remained healthy", "predisposed, developed pB-ALL"))
-p_sub <- plot_ly(A_hat, x=~`Component 1`, y=~`Component 2`, z=~`Component 3`, 
+p_sub_tempted <- plot_ly(A_hat, x=~`Component 1`, y=~`Component 2`, z=~`Component 3`, 
              color=~group, colors=col_group)
-p_sub <- p_sub %>% add_markers(marker=list(size=5))
-p_sub <- p_sub %>% layout(scene=list(xaxis=list(title="Component 1", titlefont = list(size = 20)), 
+p_sub_tempted <- p_sub_tempted %>% add_markers(marker=list(size=5))
+p_sub_tempted <- p_sub_tempted %>% layout(scene=list(xaxis=list(title="Component 1", titlefont = list(size = 20)), 
                              yaxis=list(title="Component 2", titlefont = list(size = 20)), 
                              zaxis=list(title="Component 3", titlefont = list(size = 20))),
                           legend = list(font = list(size = 20), orientation = "h"))
-p_sub
+p_sub_tempted
 
-htmlwidgets::saveWidget(widget=p_sub, 
-                        file="../figure_table/leukemia_sub.html",
+htmlwidgets::saveWidget(widget=p_sub_tempted, 
+                        file="../figure_table/leukemia_sub_tempted.html",
                         selfcontained=F)
 ```
-```{r, fig.width = 3, fig.height=3.2}
-p_sub23 <- ggplot(data=A_hat, aes(x=`Component 2`, y=`Component 3`)) +
+```{r}
+p_sub23_tempted <- ggplot(data=A_hat, aes(x=`Component 2`, y=`Component 3`)) +
   geom_point(aes(color=group)) + 
   scale_color_manual(values=col_group) + 
   theme_bw()+
@@ -186,12 +190,27 @@ p_feat_ratio_summary <- plot_feature_summary(feature_mat_ratio,
   xlab('Week') + theme_bw() + 
   theme(legend.position='bottom') +
   scale_color_manual(values=col_group) + scale_fill_manual(values=col_group)
-p_feat_ratio_summary
+```
+
+
+## Plot all results for main text
+
+```{r tempted_allplot, fig.width = 10, fig.height=3}
+lay <- rbind(c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), 
+             c(4,5,5,5))
+lgd1 <- get_legend(p_time_tempted)
+lgd2 <- get_legend(p_sub23_tempted)
+p_tempted_all <- grid.arrange(p_time_tempted+theme(legend.position="none"),
+                          p_sub23_tempted+theme(legend.position="none"),
+                          p_feat_ratio_summary+theme(legend.position="none"),
+                          lgd1, lgd2,
+                          layout_matrix=lay)
+ggsave('../figure_table/leukemia_tempted.pdf', width=10, height=3, plot=p_tempted_all)
 ```
 
 
 
-## Plot top features associated with disease
+## Plot top features associated with disease for supplementary
 
 ```{r save_topfeat}
 # the log ratio is constructed using the following features
@@ -249,7 +268,7 @@ for (ii in 2:3){
                             time=rep(meta_pc$week, nfeat),
                             group=rep(meta_pc[,ifelse(ii==2, "group", "genotype")], nfeat),
                             hostID=rep(meta_pc$hostID, nfeat))
-  p_topfeat <- ggplot(data=tab_topfeat) + 
+  p_topfeat_tempted <- ggplot(data=tab_topfeat) + 
     geom_point(aes(x=time, y=RA, color=group), size=0.8) + 
     facet_wrap(vars(feature), nrow=3) + 
     theme_bw() + 
@@ -257,37 +276,22 @@ for (ii in 2:3){
     ggtitle(paste0("Top Features Identified by Component ", ii)) + theme(legend.position="bottom") + 
      coord_trans(y="sqrt")
   if (ii==2){
-    p_topfeat <- p_topfeat + geom_vline(xintercept = 35, linetype="dashed", 
-                color = "grey", size=1)
+    p_topfeat_tempted <- p_topfeat_tempted + geom_vline(xintercept = 35, linetype="dashed", 
+                color = "grey", linewidth=1)
   }
+  print(p_topfeat_tempted)
   pdf(paste0("../figure_table/leukemia_topfeat", ii, ".pdf"), height=5, width=10)
-  print(p_topfeat)
+  print(p_topfeat_tempted)
   dev.off()
 }
-
 ```
-
-
-```{r tempted_allplot, fig.width = 10, fig.height=3}
-lay <- rbind(c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), 
-             c(4,5,5,5))
-lgd1 <- get_legend(p_time)
-lgd2 <- get_legend(p_sub23)
-p_tempted <- grid.arrange(p_time+theme(legend.position="none"),
-                          p_sub23+theme(legend.position="none"),
-                          p_feat_ratio_summary+theme(legend.position="none"),
-                          lgd1, lgd2,
-                          layout_matrix=lay)
-ggsave('../figure_table/leukemia_plot.pdf', width=10, height=3, plot=p_tempted)
-```
-
 
 
 # CTF
 
 ## Run analysis
 
-```{r ctf}
+```{r ctf, eval=FALSE}
 py_run_file(file="analysis_leukemia_ctf.py",convert=F)
 ```
 
@@ -296,29 +300,29 @@ py_run_file(file="analysis_leukemia_ctf.py",convert=F)
 
 ```{r ctf_sub}
 ctf_sub <- read_qza("result/subject-biplot_leukemia.qza")$data$Vectors
-ctf_sub$group <- metauni[ctf_sub$SampleID,"group"]
-p_sub <- plot_ly(ctf_sub, x=~`PC1`, y=~`PC2`, z=~`PC3`, 
+ctf_sub$group <- metauni[ctf_sub$SampleID, "group"]
+p_sub_ctf <- plot_ly(ctf_sub, x=~`PC1`, y=~`PC2`, z=~`PC3`, 
                  color=~group, colors=col_group)
-p_sub <- p_sub %>% add_markers(marker=list(size=5))
-p_sub <- p_sub %>% layout(scene=list(xaxis=list(title="Component 1", titlefont = list(size = 20)), 
+p_sub_ctf <- p_sub_ctf %>% add_markers(marker=list(size=5))
+p_sub_ctf <- p_sub_ctf %>% layout(scene=list(xaxis=list(title="Component 1", titlefont = list(size = 20)), 
                                      yaxis=list(title="Component 2", titlefont = list(size = 20)), 
                                      zaxis=list(title="Component 3", titlefont = list(size = 20))),
                           legend = list(font = list(size = 20), orientation = "h"))
-p_sub
-htmlwidgets::saveWidget(widget=p_sub, 
+p_sub_ctf
+htmlwidgets::saveWidget(widget=p_sub_ctf, 
                         file="../figure_table/leukemia_sub_ctf.html",
                         selfcontained=F)
-p_sub12 <- ctf_sub %>% ggplot() + 
+p_sub12_ctf <- ctf_sub %>% ggplot() + 
   geom_point(aes(x=PC1, y=PC2, color=group)) +
   scale_color_manual(values=col_group) +
   theme_bw() +
   theme(legend.position="bottom")
-p_sub13 <- ctf_sub %>% ggplot() + 
+p_sub13_ctf <- ctf_sub %>% ggplot() + 
   geom_point(aes(x=PC1, y=PC3, color=group)) +
   scale_color_manual(values=col_group) + 
   theme_bw() + 
   theme(legend.position='bottom')
-p_sub23 <- ctf_sub %>% ggplot() + 
+p_sub23_ctf <- ctf_sub %>% ggplot() + 
   geom_point(aes(x=PC2, y=PC3, color=group)) +
   scale_color_manual(values=col_group) +
   theme_bw() + 
@@ -328,7 +332,6 @@ g_legend<-function(a.gplot){
   leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
   legend <- tmp$grobs[[leg]]
   return(legend)}
-mylegend <- g_legend(p_sub12)
 ```
 
 ## CTF trajectories
@@ -350,7 +353,7 @@ read_traj <- function(file){
 ctf_traj <- as.data.frame(read_traj("result/state-subject-ordination_leukemia.qza")$data)
 ctf_traj$group <- meta_all[ctf_traj$`#SampleID`, "group"]
 colnames(ctf_traj)[2:4] <- paste("Component", 1:3)
-p_traj <- plot_feature_summary(ctf_traj[,c("Component 1","Component 2")], 
+p_traj_ctf <- plot_feature_summary(ctf_traj[,c("Component 1","Component 2","Component 3")], 
                      ctf_traj$week_int, 
                      ctf_traj$group,
                      bws=bws) + 
@@ -358,40 +361,184 @@ p_traj <- plot_feature_summary(ctf_traj[,c("Component 1","Component 2")],
   theme(legend.position='bottom') +
   scale_color_manual(values=col_group) + 
   scale_fill_manual(values=col_group)
-p_traj
 ```
 
 
 ## CTF time loadings
 
-```{r ctf_time, fig.width = 3, fig.height=3}
+```{r ctf_time}
 ctf_time <- read_qza("result/state-biplot_leukemia.qza")$data$Vectors
 colnames(ctf_time)[1] <- "week_int"
 tab_time <- data.frame(time=ctf_time$week_int, value=as.vector(as.matrix(ctf_time[,2:4])), 
                        component=as.factor(as.vector(t(matrix(rep(1:3,nrow(ctf_time)),3,)))))
-p_time <- tab_time %>% ggplot(aes(x=time, y=value, color=component)) + 
-  geom_line(size=1.5) + 
+p_time_ctf <- tab_time %>% ggplot(aes(x=time, y=value, color=component)) + 
+  geom_line(linewidth=1.5) + 
   scale_color_manual(values=col_microbe) + 
   labs(x='Week', y="Temporal Loading", color="Component") + 
   theme_bw() + 
   theme(legend.position='bottom')
-p_time
-mylegend2 <- g_legend(p_time)
+```
+
+## Plot all results
+
+```{r ctf_allplot, fig.width = 8, fig.height=5.5}
+lay <- rbind(c(1,2,3),c(1,2,3),c(1,2,3),c(1,2,3),c(1,2,3),
+             c(4,4,4),c(4,4,4),c(4,4,4),c(4,4,4),c(4,4,4),
+             c(5,5,5),
+             c(6,6,6))
+lgd1 <- get_legend(p_time_ctf)
+lgd2 <- get_legend(p_sub23_ctf)
+p_ctf_all <- grid.arrange(
+  p_time_ctf+theme(legend.position="none"),
+  p_sub12_ctf+theme(legend.position="none"),
+  p_sub23_ctf+theme(legend.position="none"),
+  p_traj_ctf+theme(legend.position="none"),
+  lgd1, lgd2, 
+  layout_matrix=lay)
+ggsave("../figure_table/leukemia_ctf.pdf", width=8, height=5.5, plot=p_ctf_all)
 ```
 
 
-```{r ctf_allplot, fig.width = 10, fig.height=3}
-lay <- rbind(c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), 
-             c(4,5,5,5))
-lgd1 <- get_legend(p_time)
-lgd2 <- get_legend(p_sub23)
-p_ctf_all <- grid.arrange(p_time+theme(legend.position="none"),
-                          p_sub12+theme(legend.position="none"),
-                          p_traj+theme(legend.position="none"),
-                          lgd1, lgd2,
-                          layout_matrix=lay)
-ggsave("../figure_table/leukemia_ctf.pdf", width=10, height=3, plot=p_ctf_all)
+# microTensor
+
+## Run analysis
+
+```{r run_microtensor, eval=FALSE}
+count_tab <- count_all[,colMeans(count_all==0)<=0.95]
+meta_tab <- meta_all[,c("sample_name", "hostID", "week", "group", "genotype", "diseased")]
+meta_tab$time_disc <- round(meta_tab$week)
+tm <- sort(unique(meta_tab$time_disc))
+metauni <- unique(meta_tab[,c("hostID", "group", "genotype", "diseased")])
+rownames(metauni) <- metauni$hostID
+      
+X_array <- array(NA, dim = c(ncol(count_tab),
+                         length(unique(meta_tab$hostID)),
+                         length(tm)))
+dimnames(X_array) <- list(colnames(count_tab),
+                          unique(meta_tab$hostID),
+                          tm)
+for(k in 1:length(tm)) {
+  k_df_samples <- meta_tab %>% 
+    dplyr::filter(time_disc == tm[k])
+  k_df_samples <- k_df_samples[!duplicated(k_df_samples$hostID),]
+  X_array[, k_df_samples$hostID, k] <- 
+    t(count_tab[rownames(k_df_samples), ])
+}
+mean(is.na(X_array)) # check proportion of NAs
+
+set.seed(1)
+fit_microTensor <- 
+  microTensor::microTensor(X = X_array, R = npc, 
+                           nn_t = TRUE, ortho_m = TRUE,
+                           weighted = TRUE)
+micro_sub <- as.data.frame(fit_microTensor$s)
+colnames(micro_sub) <- paste0("PC",1:npc)
+micro_sub$hostID <- dimnames(X_array)[[2]]
+micro_sub <- merge(metauni, micro_sub)
+write.csv(micro_sub, file="result/subject_microtensor_leukemia.csv")
+micro_time <- as.data.frame(fit_microTensor$t)
+colnames(micro_time) <- paste0("PC",1:3)
+micro_time$time <- tm
+write.csv(micro_time, file="result/time_microtensor_leukemia.csv")
+
+micro_traj <- microTensor::create_loading(fit_decomp = fit_microTensor,
+                                          feature_names = dimnames(X_array)[[1]],
+                                          subject_names = dimnames(X_array)[[2]],
+                                          time_names = tm,
+                                          class = "sample")
+colnames(micro_traj) <- c("hostID", "time_disc", paste0("PC",1:npc))
+micro_traj <- merge(meta_tab[,c("sample_name", "hostID", "time_disc", "group", "genotype", "diseased")], micro_traj)
+write.csv(micro_traj, file="result/trajectory_microtensor_leukemia.csv")
 ```
+## microTensor subject loading
+
+```{r microtensor_sub}
+micro_sub <- read.csv(file="result/subject_microtensor_leukemia.csv", row.names=1, header=T)
+p_sub_micro <- plot_ly(micro_sub, x=~PC1, y=~PC2, z=~PC3, 
+             color=~group, colors=col_group)
+p_sub_micro <- p_sub_micro %>% add_markers(marker=list(size=5))
+p_sub_micro <- p_sub_micro %>% layout(scene=list(xaxis=list(title="Component 1", titlefont = list(size = 20)), 
+                             yaxis=list(title="Component 2", titlefont = list(size = 20)), 
+                             zaxis=list(title="Component 3", titlefont = list(size = 20))),
+                          legend = list(font = list(size = 20), orientation = "h"))
+p_sub_micro
+
+htmlwidgets::saveWidget(widget=p_sub_micro, 
+                        file="../figure_table/leukemia_sub_microtensor.html",
+                        selfcontained=F)
+
+p_sub12_micro <- micro_sub %>% ggplot() + 
+  geom_point(aes(x=PC1, y=PC2, color=group)) +
+  scale_color_manual(values=col_group) +
+  theme_bw() +
+  theme(legend.position="bottom")
+p_sub13_micro <- micro_sub %>% ggplot() + 
+  geom_point(aes(x=PC1, y=PC3, color=group)) +
+  scale_color_manual(values=col_group) + 
+  theme_bw() + 
+  theme(legend.position='bottom')
+p_sub23_micro <- micro_sub %>% ggplot() + 
+  geom_point(aes(x=PC2, y=PC3, color=group)) +
+  scale_color_manual(values=col_group) +
+  theme_bw() + 
+  theme(legend.position='bottom')
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
+```
+
+## microTensor trajectories
+
+```{r microtensor_traj, fig.width = 8, fig.height=4}
+micro_traj <- read.csv(file="result/trajectory_microtensor_leukemia.csv", header=T, row.names=1)
+colnames(micro_traj)[7:9] <- paste("Component", 1:3)
+p_traj_micro <- plot_feature_summary(micro_traj[,c("Component 1","Component 2","Component 3")], 
+                     micro_traj$time_disc, 
+                     micro_traj$group,
+                     bws=bws) + 
+  xlab('Week') + theme_bw() + 
+  theme(legend.position='bottom') +
+  scale_color_manual(values=col_group) + 
+  scale_fill_manual(values=col_group)
+```
+
+## microTensor time loading
+
+```{r microtensor_time}
+micro_time <- read.csv("result/time_microtensor_leukemia.csv", header=T)
+tab_micro_time <- tidyr::pivot_longer(micro_time, 
+                        cols = c(PC1, PC2, PC3), 
+                        names_to = "PC", 
+                        values_to = "value")
+p_time_micro <- ggplot(data=tab_micro_time) + 
+  geom_line(linewidth=1.5, aes(x=time, y=value, color=PC)) + 
+  scale_color_manual(values=col_microbe) + 
+  labs(x="Study Day", y="Time Loading", color="Component") +
+  theme_bw() + 
+  theme(legend.position='bottom')
+```
+
+## Plot all results
+
+```{r micro_allplot, fig.width = 8, fig.height=5.5}
+lay <- rbind(c(1,2,3),c(1,2,3),c(1,2,3),c(1,2,3),c(1,2,3),
+             c(4,4,4),c(4,4,4),c(4,4,4),c(4,4,4),c(4,4,4),
+             c(5,5,5),
+             c(6,6,6))
+lgd1 <- get_legend(p_time_micro)
+lgd2 <- get_legend(p_sub23_micro)
+p_micro_all <- grid.arrange(
+  p_time_micro+theme(legend.position="none"),
+  p_sub12_micro+theme(legend.position="none"),
+  p_sub23_micro+theme(legend.position="none"),
+  p_traj_micro+theme(legend.position="none"),
+  lgd1, lgd2, 
+  layout_matrix=lay)
+ggsave("../figure_table/leukemia_microtensor.pdf", width=8, height=5.5, plot=p_micro_all)
+```
+
 
 # PCoA
 
