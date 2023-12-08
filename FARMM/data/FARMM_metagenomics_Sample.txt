@@ -1,0 +1,625 @@
+Sample_Id	Participant_repeated_measure_Id	Participant_Id	Study timepoint (days) [OBI_0001508]	Habitat [ENVO_01000739]	Host body habitat [UBERON_0000466]	Host body product [UBERON_0000463]	Host body site [UBERON_0000061]	Sample type [OBI_0100051]
+9002-3-PA Plasma	9002_15 days (Source)	9002 (Source)	15					Plasma
+9002-3-PB Plasma	9002_12 days (Source)	9002 (Source)	12					Plasma
+9002-3-PC Plasma	9002_9 days (Source)	9002 (Source)	9					Plasma
+9002-3-PD Plasma	9002_5 days (Source)	9002 (Source)	5					Plasma
+9002-3-PE Plasma	9002_0 days (Source)	9002 (Source)	0					Plasma
+9003-2-PA Plasma	9003_15 days (Source)	9003 (Source)	15					Plasma
+9003-2-PB Plasma	9003_12 days (Source)	9003 (Source)	12					Plasma
+9003-2-PC Plasma	9003_9 days (Source)	9003 (Source)	9					Plasma
+9003-2-PD Plasma	9003_5 days (Source)	9003 (Source)	5					Plasma
+9003-2-PE Plasma	9003_0 days (Source)	9003 (Source)	0					Plasma
+9004-3-PA Plasma	9004_15 days (Source)	9004 (Source)	15					Plasma
+9004-3-PB Plasma	9004_12 days (Source)	9004 (Source)	12					Plasma
+9004-3-PC Plasma	9004_9 days (Source)	9004 (Source)	9					Plasma
+9004-3-PD Plasma	9004_5 days (Source)	9004 (Source)	5					Plasma
+9004-3-PE Plasma	9004_0 days (Source)	9004 (Source)	0					Plasma
+9005-1-PA Plasma	9005_15 days (Source)	9005 (Source)	15					Plasma
+9005-1-PB Plasma	9005_12 days (Source)	9005 (Source)	12					Plasma
+9005-1-PC Plasma	9005_9 days (Source)	9005 (Source)	9					Plasma
+9005-1-PD Plasma	9005_5 days (Source)	9005 (Source)	5					Plasma
+9005-1-PE Plasma	9005_0 days (Source)	9005 (Source)	0					Plasma
+9006-1-PA Plasma	9006_15 days (Source)	9006 (Source)	15					Plasma
+9006-1-PB Plasma	9006_12 days (Source)	9006 (Source)	12					Plasma
+9006-1-PC Plasma	9006_9 days (Source)	9006 (Source)	9					Plasma
+9006-1-PD Plasma	9006_5 days (Source)	9006 (Source)	5					Plasma
+9006-1-PE Plasma	9006_0 days (Source)	9006 (Source)	0					Plasma
+9008-3-PA Plasma	9008_15 days (Source)	9008 (Source)	15					Plasma
+9008-3-PB Plasma	9008_12 days (Source)	9008 (Source)	12					Plasma
+9008-3-PC Plasma	9008_9 days (Source)	9008 (Source)	9					Plasma
+9008-3-PD Plasma	9008_5 days (Source)	9008 (Source)	5					Plasma
+9008-3-PE Plasma	9008_0 days (Source)	9008 (Source)	0					Plasma
+9009-2-PA Plasma	9009_15 days (Source)	9009 (Source)	15					Plasma
+9009-2-PB Plasma	9009_12 days (Source)	9009 (Source)	12					Plasma
+9009-2-PC Plasma	9009_9 days (Source)	9009 (Source)	9					Plasma
+9009-2-PD Plasma	9009_5 days (Source)	9009 (Source)	5					Plasma
+9009-2-PE Plasma	9009_0 days (Source)	9009 (Source)	0					Plasma
+9010-1-PA Plasma	9010_15 days (Source)	9010 (Source)	15					Plasma
+9010-1-PB Plasma	9010_12 days (Source)	9010 (Source)	12					Plasma
+9010-1-PC Plasma	9010_9 days (Source)	9010 (Source)	9					Plasma
+9010-1-PD Plasma	9010_5 days (Source)	9010 (Source)	5					Plasma
+9010-1-PE Plasma	9010_0 days (Source)	9010 (Source)	0					Plasma
+9013-2-PA Plasma	9013_15 days (Source)	9013 (Source)	15					Plasma
+9013-2-PB Plasma	9013_12 days (Source)	9013 (Source)	12					Plasma
+9013-2-PC Plasma	9013_9 days (Source)	9013 (Source)	9					Plasma
+9013-2-PD Plasma	9013_5 days (Source)	9013 (Source)	5					Plasma
+9013-2-PE Plasma	9013_0 days (Source)	9013 (Source)	0					Plasma
+9014-3-PA Plasma	9014_15 days (Source)	9014 (Source)	15					Plasma
+9014-3-PB Plasma	9014_12 days (Source)	9014 (Source)	12					Plasma
+9014-3-PC Plasma	9014_9 days (Source)	9014 (Source)	9					Plasma
+9014-3-PD Plasma	9014_5 days (Source)	9014 (Source)	5					Plasma
+9014-3-PE Plasma	9014_0 days (Source)	9014 (Source)	0					Plasma
+9015-1-PA Plasma	9015_15 days (Source)	9015 (Source)	15					Plasma
+9015-1-PB Plasma	9015_12 days (Source)	9015 (Source)	12					Plasma
+9015-1-PC Plasma	9015_9 days (Source)	9015 (Source)	9					Plasma
+9015-1-PD Plasma	9015_5 days (Source)	9015 (Source)	5					Plasma
+9015-1-PE Plasma	9015_0 days (Source)	9015 (Source)	0					Plasma
+9016-2-PA Plasma	9016_15 days (Source)	9016 (Source)	15					Plasma
+9016-2-PB Plasma	9016_12 days (Source)	9016 (Source)	12					Plasma
+9016-2-PC Plasma	9016_9 days (Source)	9016 (Source)	9					Plasma
+9016-2-PD Plasma	9016_5 days (Source)	9016 (Source)	5					Plasma
+9016-2-PE Plasma	9016_0 days (Source)	9016 (Source)	0					Plasma
+9017-3-PA Plasma	9017_15 days (Source)	9017 (Source)	15					Plasma
+9017-3-PB Plasma	9017_12 days (Source)	9017 (Source)	12					Plasma
+9017-3-PC Plasma	9017_9 days (Source)	9017 (Source)	9					Plasma
+9017-3-PD Plasma	9017_5 days (Source)	9017 (Source)	5					Plasma
+9017-3-PE Plasma	9017_0 days (Source)	9017 (Source)	0					Plasma
+9019-1-PA Plasma	9019_15 days (Source)	9019 (Source)	15					Plasma
+9019-1-PB Plasma	9019_12 days (Source)	9019 (Source)	12					Plasma
+9019-1-PC Plasma	9019_9 days (Source)	9019 (Source)	9					Plasma
+9019-1-PD Plasma	9019_5 days (Source)	9019 (Source)	5					Plasma
+9019-1-PE Plasma	9019_0 days (Source)	9019 (Source)	0					Plasma
+9022-3-PA Plasma	9022_15 days (Source)	9022 (Source)	15					Plasma
+9022-3-PB Plasma	9022_12 days (Source)	9022 (Source)	12					Plasma
+9022-3-PC Plasma	9022_9 days (Source)	9022 (Source)	9					Plasma
+9022-3-PD Plasma	9022_5 days (Source)	9022 (Source)	5					Plasma
+9022-3-PE Plasma	9022_0 days (Source)	9022 (Source)	0					Plasma
+9024-2-PA Plasma	9024_15 days (Source)	9024 (Source)	15					Plasma
+9024-2-PB Plasma	9024_12 days (Source)	9024 (Source)	12					Plasma
+9024-2-PC Plasma	9024_9 days (Source)	9024 (Source)	9					Plasma
+9024-2-PD Plasma	9024_5 days (Source)	9024 (Source)	5					Plasma
+9024-2-PE Plasma	9024_0 days (Source)	9024 (Source)	0					Plasma
+9025-2-PA Plasma	9025_15 days (Source)	9025 (Source)	15					Plasma
+9025-2-PB Plasma	9025_12 days (Source)	9025 (Source)	12					Plasma
+9025-2-PC Plasma	9025_9 days (Source)	9025 (Source)	9					Plasma
+9025-2-PD Plasma	9025_5 days (Source)	9025 (Source)	5					Plasma
+9025-2-PE Plasma	9025_0 days (Source)	9025 (Source)	0					Plasma
+9026-3-PA Plasma	9026_15 days (Source)	9026 (Source)	15					Plasma
+9026-3-PB Plasma	9026_12 days (Source)	9026 (Source)	12					Plasma
+9026-3-PC Plasma	9026_9 days (Source)	9026 (Source)	9					Plasma
+9026-3-PD Plasma	9026_5 days (Source)	9026 (Source)	5					Plasma
+9026-3-PE Plasma	9026_0 days (Source)	9026 (Source)	0					Plasma
+9027-3-PA Plasma	9027_15 days (Source)	9027 (Source)	15					Plasma
+9027-3-PB Plasma	9027_12 days (Source)	9027 (Source)	12					Plasma
+9027-3-PC Plasma	9027_9 days (Source)	9027 (Source)	9					Plasma
+9027-3-PD Plasma	9027_5 days (Source)	9027 (Source)	5					Plasma
+9027-3-PE Plasma	9027_0 days (Source)	9027 (Source)	0					Plasma
+9029-2-PA Plasma	9029_15 days (Source)	9029 (Source)	15					Plasma
+9029-2-PB Plasma	9029_12 days (Source)	9029 (Source)	12					Plasma
+9029-2-PC Plasma	9029_9 days (Source)	9029 (Source)	9					Plasma
+9029-2-PD Plasma	9029_5 days (Source)	9029 (Source)	5					Plasma
+9029-2-PE Plasma	9029_0 days (Source)	9029 (Source)	0					Plasma
+9030-1-PA Plasma	9030_15 days (Source)	9030 (Source)	15					Plasma
+9030-1-PB Plasma	9030_12 days (Source)	9030 (Source)	12					Plasma
+9030-1-PC Plasma	9030_9 days (Source)	9030 (Source)	9					Plasma
+9030-1-PD Plasma	9030_5 days (Source)	9030 (Source)	5					Plasma
+9030-1-PE Plasma	9030_0 days (Source)	9030 (Source)	0					Plasma
+9031-3-PA Plasma	9031_15 days (Source)	9031 (Source)	15					Plasma
+9031-3-PB Plasma	9031_12 days (Source)	9031 (Source)	12					Plasma
+9031-3-PC Plasma	9031_9 days (Source)	9031 (Source)	9					Plasma
+9031-3-PD Plasma	9031_5 days (Source)	9031 (Source)	5					Plasma
+9031-3-PE Plasma	9031_0 days (Source)	9031 (Source)	0					Plasma
+9032-2-PA Plasma	9032_15 days (Source)	9032 (Source)	15					Plasma
+9032-2-PB Plasma	9032_12 days (Source)	9032 (Source)	12					Plasma
+9032-2-PC Plasma	9032_9 days (Source)	9032 (Source)	9					Plasma
+9032-2-PD Plasma	9032_5 days (Source)	9032 (Source)	5					Plasma
+9032-2-PE Plasma	9032_0 days (Source)	9032 (Source)	0					Plasma
+9033-1-PA Plasma	9033_15 days (Source)	9033 (Source)	15					Plasma
+9033-1-PB Plasma	9033_12 days (Source)	9033 (Source)	12					Plasma
+9033-1-PC Plasma	9033_9 days (Source)	9033 (Source)	9					Plasma
+9033-1-PD Plasma	9033_5 days (Source)	9033 (Source)	5					Plasma
+9033-1-PE Plasma	9033_0 days (Source)	9033 (Source)	0					Plasma
+9034-2-PA Plasma	9034_15 days (Source)	9034 (Source)	15					Plasma
+9034-2-PB Plasma	9034_12 days (Source)	9034 (Source)	12					Plasma
+9034-2-PC Plasma	9034_9 days (Source)	9034 (Source)	9					Plasma
+9034-2-PD Plasma	9034_5 days (Source)	9034 (Source)	5					Plasma
+9034-2-PE Plasma	9034_0 days (Source)	9034 (Source)	0					Plasma
+9035-3-PA Plasma	9035_15 days (Source)	9035 (Source)	15					Plasma
+9035-3-PB Plasma	9035_12 days (Source)	9035 (Source)	12					Plasma
+9035-3-PC Plasma	9035_9 days (Source)	9035 (Source)	9					Plasma
+9035-3-PD Plasma	9035_5 days (Source)	9035 (Source)	5					Plasma
+9035-3-PE Plasma	9035_0 days (Source)	9035 (Source)	0					Plasma
+9036-1-PA Plasma	9036_15 days (Source)	9036 (Source)	15					Plasma
+9036-1-PB Plasma	9036_12 days (Source)	9036 (Source)	12					Plasma
+9036-1-PC Plasma	9036_9 days (Source)	9036 (Source)	9					Plasma
+9036-1-PD Plasma	9036_5 days (Source)	9036 (Source)	5					Plasma
+9036-1-PE Plasma	9036_0 days (Source)	9036 (Source)	0					Plasma
+9037-1-PA Plasma	9037_15 days (Source)	9037 (Source)	15					Plasma
+9037-1-PB Plasma	9037_12 days (Source)	9037 (Source)	12					Plasma
+9037-1-PC Plasma	9037_9 days (Source)	9037 (Source)	9					Plasma
+9037-1-PD Plasma	9037_5 days (Source)	9037 (Source)	5					Plasma
+9037-1-PE Plasma	9037_0 days (Source)	9037 (Source)	0					Plasma
+9038-2-PA Plasma	9038_15 days (Source)	9038 (Source)	15					Plasma
+9038-2-PB Plasma	9038_12 days (Source)	9038 (Source)	12					Plasma
+9038-2-PC Plasma	9038_9 days (Source)	9038 (Source)	9					Plasma
+9038-2-PD Plasma	9038_5 days (Source)	9038 (Source)	5					Plasma
+9038-2-PE Plasma	9038_0 days (Source)	9038 (Source)	0					Plasma
+9040-1-PA Plasma	9040_15 days (Source)	9040 (Source)	15					Plasma
+9040-1-PB Plasma	9040_12 days (Source)	9040 (Source)	12					Plasma
+9040-1-PC Plasma	9040_9 days (Source)	9040 (Source)	9					Plasma
+9040-1-PD Plasma	9040_5 days (Source)	9040 (Source)	5					Plasma
+9040-1-PE Plasma	9040_0 days (Source)	9040 (Source)	0					Plasma
+SRR13004498	9016_12 days (Source)	9016 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004499	9016_11 days (Source)	9016 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004500	9016_10 days (Source)	9016 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004501	9016_9 days (Source)	9016 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004502	9016_8 days (Source)	9016 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004503	9016_7 days (Source)	9016 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004504	9003_2 days (Source)	9003 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004505	9016_6 days (Source)	9016 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004506	9016_5 days (Source)	9016 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004507	9016_3 days (Source)	9016 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004508	9016_2 days (Source)	9016 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004509	9016_0 days (Source)	9016 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004510	9015_15 days (Source)	9015 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004511	9015_14 days (Source)	9015 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004512	9015_13 days (Source)	9015 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004513	9015_12 days (Source)	9015 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004514	9015_10 days (Source)	9015 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004515	9003_1 days (Source)	9003 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004516	9015_9 days (Source)	9015 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004517	9015_7 days (Source)	9015 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004518	9015_6 days (Source)	9015 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004519	9015_5 days (Source)	9015 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004520	9015_4 days (Source)	9015 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004521	9015_3 days (Source)	9015 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004522	9002_12 days (Source)	9002 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004523	9002_2 days (Source)	9002 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004524	9002_1 days (Source)	9002 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004525	9009_15 days (Source)	9009 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004526	9009_13 days (Source)	9009 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004527	9009_12 days (Source)	9009 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004528	9009_11 days (Source)	9009 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004529	9009_10 days (Source)	9009 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004530	9009_9 days (Source)	9009 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004531	9009_8 days (Source)	9009 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004532	9009_7 days (Source)	9009 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004533	9009_6 days (Source)	9009 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004534	9009_5 days (Source)	9009 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004535	9002_11 days (Source)	9002 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004536	9009_4 days (Source)	9009 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004537	9009_3 days (Source)	9009 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004538	9009_0 days (Source)	9009 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004539	9008_15 days (Source)	9008 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004540	9015_2 days (Source)	9015 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004541	9015_1 days (Source)	9015 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004542	9015_0 days (Source)	9015 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004543	9014_15 days (Source)	9014 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004544	9003_0 days (Source)	9003 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004545	9014_14 days (Source)	9014 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004546	9014_13 days (Source)	9014 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004547	9014_12 days (Source)	9014 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004548	9014_11 days (Source)	9014 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004549	9014_10 days (Source)	9014 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004550	9014_9 days (Source)	9014 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004551	9014_7 days (Source)	9014 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004552	9014_6 days (Source)	9014 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004553	9014_5 days (Source)	9014 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004554	9014_4 days (Source)	9014 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004555	9002_15 days (Source)	9002 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004556	9014_3 days (Source)	9014 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004557	9014_2 days (Source)	9014 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004558	9014_1 days (Source)	9014 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004559	9013_15 days (Source)	9013 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004560	9013_13 days (Source)	9013 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004561	9013_12 days (Source)	9013 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004562	9013_11 days (Source)	9013 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004563	9013_10 days (Source)	9013 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004564	9008_14 days (Source)	9008 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004565	9008_13 days (Source)	9008 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004566	9008_12 days (Source)	9008 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004567	9008_11 days (Source)	9008 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004568	9008_10 days (Source)	9008 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004569	9008_9 days (Source)	9008 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004570	9002_10 days (Source)	9002 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004571	9008_7 days (Source)	9008 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004572	9008_6 days (Source)	9008 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004573	9008_5 days (Source)	9008 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004574	9008_4 days (Source)	9008 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004575	9008_3 days (Source)	9008 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004576	9008_2 days (Source)	9008 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004577	9008_1 days (Source)	9008 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004578	9006_15 days (Source)	9006 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004579	9006_14 days (Source)	9006 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004580	9006_13 days (Source)	9006 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004581	9002_9 days (Source)	9002 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004582	9006_12 days (Source)	9006 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004583	9006_11 days (Source)	9006 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004584	9006_10 days (Source)	9006 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004585	9006_9 days (Source)	9006 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004586	9006_8 days (Source)	9006 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004587	9006_7 days (Source)	9006 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004588	9013_9 days (Source)	9013 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004589	9013_8 days (Source)	9013 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004590	9002_14 days (Source)	9002 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004591	9013_6 days (Source)	9013 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004592	9013_5 days (Source)	9013 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004593	9013_4 days (Source)	9013 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004594	9013_3 days (Source)	9013 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004595	9013_2 days (Source)	9013 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004596	9013_0 days (Source)	9013 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004597	9010_15 days (Source)	9010 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004598	9010_13 days (Source)	9010 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004599	9010_12 days (Source)	9010 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004600	9010_11 days (Source)	9010 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004601	9002_13 days (Source)	9002 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004602	9010_10 days (Source)	9010 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004603	9010_9 days (Source)	9010 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004604	9010_8 days (Source)	9010 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004605	9010_6 days (Source)	9010 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004606	9010_5 days (Source)	9010 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004607	9010_4 days (Source)	9010 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004608	9010_3 days (Source)	9010 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004609	9010_2 days (Source)	9010 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004610	9010_1 days (Source)	9010 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004611	9010_0 days (Source)	9010 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004612	9006_6 days (Source)	9006 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004613	9006_5 days (Source)	9006 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004614	9006_4 days (Source)	9006 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004615	9006_3 days (Source)	9006 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004616	9002_7 days (Source)	9002 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004617	9006_2 days (Source)	9006 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004618	9006_1 days (Source)	9006 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004619	9006_0 days (Source)	9006 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004620	9005_15 days (Source)	9005 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004621	9005_14 days (Source)	9005 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004622	9005_13 days (Source)	9005 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004623	9005_12 days (Source)	9005 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004624	9005_11 days (Source)	9005 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004625	9005_10 days (Source)	9005 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004626	9005_9 days (Source)	9005 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004627	9002_6 days (Source)	9002 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004628	9005_8 days (Source)	9005 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004629	9005_7 days (Source)	9005 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004630	NA_ (Source)	NA (Source)		environment negative control				DNA-free water
+SRR13004631	NA_ (Source)	NA (Source)		Environment positive control				Mock DNA
+SRR13004632	9040_ (Source)	9040 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004633	9038_ (Source)	9038 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004634	9005_6 days (Source)	9005 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004635	9037_ (Source)	9037 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004636	9036_ (Source)	9036 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004637	9035_ (Source)	9035 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004638	9034_ (Source)	9034 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004639	9033_ (Source)	9033 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004640	9032_ (Source)	9032 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004641	9029_ (Source)	9029 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004642	9027_15 days (Source)	9027 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004643	9024_9 days (Source)	9024 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004644	9016_ (Source)	9016 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004645	9005_4 days (Source)	9005 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004646	9014_ (Source)	9014 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004647	9010_ (Source)	9010 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004648	9009_ (Source)	9009 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004649	9008_ (Source)	9008 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004650	9005_ (Source)	9005 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004651	9004_ (Source)	9004 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004652	9003_ (Source)	9003 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004653	9002_ (Source)	9002 (Source)		Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004654	9040_7 days (Source)	9040 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004655	9040_0 days (Source)	9040 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004656	9005_3 days (Source)	9005 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004657	9038_15 days (Source)	9038 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004658	9038_1 days (Source)	9038 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004659	9038_0 days (Source)	9038 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004660	9037_10 days (Source)	9037 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004661	9037_9 days (Source)	9037 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004662	9037_3 days (Source)	9037 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004663	9036_2 days (Source)	9036 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004664	NA_ (Source)	NA (Source)		environment negative control				Weighing paper
+SRR13004665	NA_ (Source)	NA (Source)		environment negative control				Elution buffer
+SRR13004666	NA_ (Source)	NA (Source)		environment negative control				Blank swab
+SRR13004667	9005_2 days (Source)	9005 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004668	NA_ (Source)	NA (Source)		environment negative control				Elution buffer
+SRR13004669	NA_ (Source)	NA (Source)		environment negative control				Blank swab
+SRR13004670	NA_ (Source)	NA (Source)		environment negative control				Elution buffer
+SRR13004671	NA_ (Source)	NA (Source)		environment negative control				Empty well
+SRR13004672	NA_ (Source)	NA (Source)		Environment positive control				
+SRR13004673	NA_ (Source)	NA (Source)		environment negative control				Blank swab
+SRR13004674	NA_ (Source)	NA (Source)		environment negative control				Weighing paper
+SRR13004675	NA_ (Source)	NA (Source)		environment negative control				Empty well
+SRR13004676	NA_ (Source)	NA (Source)		environment negative control				Elution buffer
+SRR13004677	NA_ (Source)	NA (Source)		environment negative control				Empty well
+SRR13004678	9005_0 days (Source)	9005 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004679	NA_ (Source)	NA (Source)		Environment positive control				
+SRR13004680	NA_ (Source)	NA (Source)		environment negative control				Weighing paper
+SRR13004681	NA_ (Source)	NA (Source)		environment negative control				Blank swab
+SRR13004682	NA_ (Source)	NA (Source)		Environment positive control				Mock DNA
+SRR13004683	NA_ (Source)	NA (Source)		environment negative control				Weighing paper
+SRR13004684	NA_ (Source)	NA (Source)		environment negative control				Elution buffer
+SRR13004685	NA_ (Source)	NA (Source)		environment negative control				Empty well
+SRR13004686	NA_ (Source)	NA (Source)		environment negative control				Elution buffer
+SRR13004687	NA_ (Source)	NA (Source)		environment negative control				Empty well
+SRR13004688	NA_ (Source)	NA (Source)		Environment positive control				Mock DNA
+SRR13004689	9004_15 days (Source)	9004 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004690	NA_ (Source)	NA (Source)		environment negative control				Empty well
+SRR13004691	NA_ (Source)	NA (Source)		Environment positive control				Mock DNA
+SRR13004692	NA_ (Source)	NA (Source)		environment negative control				Elution buffer
+SRR13004693	NA_ (Source)	NA (Source)		Environment positive control				Mock DNA
+SRR13004694	NA_ (Source)	NA (Source)		environment negative control				Blank swab
+SRR13004695	NA_ (Source)	NA (Source)		Environment positive control				Mock DNA
+SRR13004696	NA_ (Source)	NA (Source)		environment negative control				Empty well
+SRR13004697	NA_ (Source)	NA (Source)		environment negative control				Empty well
+SRR13004698	NA_ (Source)	NA (Source)		environment negative control				Weighing paper
+SRR13004699	NA_ (Source)	NA (Source)		Environment positive control				Mock DNA
+SRR13004700	9004_14 days (Source)	9004 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004701	NA_ (Source)	NA (Source)		environment negative control				Empty well
+SRR13004702	NA_ (Source)	NA (Source)		Environment positive control				Mock DNA
+SRR13004703	NA_ (Source)	NA (Source)		environment negative control				Empty well
+SRR13004704	NA_ (Source)	NA (Source)		environment negative control				Elution buffer
+SRR13004705	NA_ (Source)	NA (Source)		Environment positive control				Mock DNA
+SRR13004706	9040_15 days (Source)	9040 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004707	9040_14 days (Source)	9040 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004708	9040_13 days (Source)	9040 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004709	9040_12 days (Source)	9040 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004710	9040_11 days (Source)	9040 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004711	9004_13 days (Source)	9004 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004712	9002_5 days (Source)	9002 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004713	9040_10 days (Source)	9040 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004714	9040_9 days (Source)	9040 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004715	9040_8 days (Source)	9040 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004716	9040_6 days (Source)	9040 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004717	9040_5 days (Source)	9040 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004718	9040_4 days (Source)	9040 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004719	9040_3 days (Source)	9040 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004720	9040_2 days (Source)	9040 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004721	9040_1 days (Source)	9040 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004722	9038_14 days (Source)	9038 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004723	9004_12 days (Source)	9004 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004724	9038_13 days (Source)	9038 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004725	9038_12 days (Source)	9038 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004726	9038_11 days (Source)	9038 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004727	9038_10 days (Source)	9038 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004728	9038_9 days (Source)	9038 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004729	9038_8 days (Source)	9038 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004730	9038_7 days (Source)	9038 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004731	9038_6 days (Source)	9038 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004732	9038_5 days (Source)	9038 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004733	9038_4 days (Source)	9038 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004734	9004_11 days (Source)	9004 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004735	9038_3 days (Source)	9038 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004736	9038_2 days (Source)	9038 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004737	9037_15 days (Source)	9037 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004738	9037_14 days (Source)	9037 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004739	9037_13 days (Source)	9037 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004740	9037_12 days (Source)	9037 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004741	9037_11 days (Source)	9037 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004742	9037_8 days (Source)	9037 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004743	9037_7 days (Source)	9037 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004744	9037_6 days (Source)	9037 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004745	9004_10 days (Source)	9004 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004746	9037_5 days (Source)	9037 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004747	9037_4 days (Source)	9037 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004748	9037_2 days (Source)	9037 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004749	9037_1 days (Source)	9037 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004750	9037_0 days (Source)	9037 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004751	9036_15 days (Source)	9036 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004752	9036_14 days (Source)	9036 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004753	9036_13 days (Source)	9036 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004754	9036_12 days (Source)	9036 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004755	9036_10 days (Source)	9036 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004756	9004_9 days (Source)	9004 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004757	9036_9 days (Source)	9036 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004758	9036_8 days (Source)	9036 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004759	9036_7 days (Source)	9036 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004760	9036_6 days (Source)	9036 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004761	9036_4 days (Source)	9036 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004762	9036_0 days (Source)	9036 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004763	9035_15 days (Source)	9035 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004764	9035_14 days (Source)	9035 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004765	9035_13 days (Source)	9035 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004766	9035_12 days (Source)	9035 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004767	9004_7 days (Source)	9004 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004768	9035_11 days (Source)	9035 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004769	9035_10 days (Source)	9035 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004770	9035_9 days (Source)	9035 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004771	9035_7 days (Source)	9035 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004772	9035_6 days (Source)	9035 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004773	9035_5 days (Source)	9035 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004774	9035_4 days (Source)	9035 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004775	9035_3 days (Source)	9035 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004776	9035_2 days (Source)	9035 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004777	9035_1 days (Source)	9035 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004778	9004_6 days (Source)	9004 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004779	9034_15 days (Source)	9034 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004780	9034_14 days (Source)	9034 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004781	9034_13 days (Source)	9034 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004782	9034_12 days (Source)	9034 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004783	9034_11 days (Source)	9034 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004784	9034_10 days (Source)	9034 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004785	9034_9 days (Source)	9034 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004786	9034_8 days (Source)	9034 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004787	9034_7 days (Source)	9034 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004788	9034_6 days (Source)	9034 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004789	9004_5 days (Source)	9004 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004790	9034_5 days (Source)	9034 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004791	9034_4 days (Source)	9034 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004792	9034_3 days (Source)	9034 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004793	9034_2 days (Source)	9034 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004794	9034_1 days (Source)	9034 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004795	9034_0 days (Source)	9034 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004796	9033_15 days (Source)	9033 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004797	9033_14 days (Source)	9033 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004798	9033_13 days (Source)	9033 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004799	9033_12 days (Source)	9033 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004800	9004_4 days (Source)	9004 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004801	9033_11 days (Source)	9033 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004802	9033_10 days (Source)	9033 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004803	9033_9 days (Source)	9033 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004804	9033_8 days (Source)	9033 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004805	9033_7 days (Source)	9033 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004806	9033_6 days (Source)	9033 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004807	9033_5 days (Source)	9033 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004808	9033_4 days (Source)	9033 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004809	9033_3 days (Source)	9033 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004810	9033_2 days (Source)	9033 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004811	9004_3 days (Source)	9004 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004812	9033_1 days (Source)	9033 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004813	9033_0 days (Source)	9033 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004814	9032_15 days (Source)	9032 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004815	9032_14 days (Source)	9032 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004816	9032_13 days (Source)	9032 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004817	9032_12 days (Source)	9032 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004818	9032_11 days (Source)	9032 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004819	9032_10 days (Source)	9032 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004820	9032_6 days (Source)	9032 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004821	9032_5 days (Source)	9032 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004822	9004_2 days (Source)	9004 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004823	9002_4 days (Source)	9002 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004824	9032_4 days (Source)	9032 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004825	9032_3 days (Source)	9032 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004826	9032_0 days (Source)	9032 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004827	9031_15 days (Source)	9031 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004828	9031_14 days (Source)	9031 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004829	9031_13 days (Source)	9031 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004830	9031_12 days (Source)	9031 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004831	9031_11 days (Source)	9031 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004832	9031_10 days (Source)	9031 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004833	9031_9 days (Source)	9031 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004834	9004_1 days (Source)	9004 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004835	9031_8 days (Source)	9031 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004836	9031_7 days (Source)	9031 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004837	9031_6 days (Source)	9031 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004838	9031_5 days (Source)	9031 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004839	9031_4 days (Source)	9031 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004840	9031_3 days (Source)	9031 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004841	9031_2 days (Source)	9031 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004842	9031_1 days (Source)	9031 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004843	9030_15 days (Source)	9030 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004844	9030_12 days (Source)	9030 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004845	9003_15 days (Source)	9003 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004846	9030_11 days (Source)	9030 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004847	9030_9 days (Source)	9030 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004848	9030_7 days (Source)	9030 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004849	9030_6 days (Source)	9030 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004850	9030_5 days (Source)	9030 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004851	9030_4 days (Source)	9030 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004852	9030_3 days (Source)	9030 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004853	9030_2 days (Source)	9030 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004854	9030_0 days (Source)	9030 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004855	9029_15 days (Source)	9029 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004856	9003_14 days (Source)	9003 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004857	9029_14 days (Source)	9029 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004858	9029_13 days (Source)	9029 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004859	9029_12 days (Source)	9029 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004860	9029_11 days (Source)	9029 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004861	9029_10 days (Source)	9029 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004862	9029_9 days (Source)	9029 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004863	9029_8 days (Source)	9029 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004864	9029_7 days (Source)	9029 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004865	9029_6 days (Source)	9029 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004866	9029_5 days (Source)	9029 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004867	9003_13 days (Source)	9003 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004868	9029_4 days (Source)	9029 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004869	9029_3 days (Source)	9029 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004870	9029_2 days (Source)	9029 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004871	9029_1 days (Source)	9029 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004872	9029_0 days (Source)	9029 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004873	9027_13 days (Source)	9027 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004874	9027_10 days (Source)	9027 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004875	9027_9 days (Source)	9027 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004876	9027_7 days (Source)	9027 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004877	9027_6 days (Source)	9027 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004878	9003_12 days (Source)	9003 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004879	9027_5 days (Source)	9027 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004880	9027_4 days (Source)	9027 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004881	9027_1 days (Source)	9027 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004882	9026_15 days (Source)	9026 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004883	9026_14 days (Source)	9026 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004884	9026_13 days (Source)	9026 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004885	9026_11 days (Source)	9026 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004886	9026_10 days (Source)	9026 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004887	9026_9 days (Source)	9026 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004888	9026_8 days (Source)	9026 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004889	9003_11 days (Source)	9003 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004890	9026_7 days (Source)	9026 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004891	9026_6 days (Source)	9026 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004892	9026_5 days (Source)	9026 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004893	9026_4 days (Source)	9026 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004894	9026_2 days (Source)	9026 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004895	9026_1 days (Source)	9026 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004896	9025_15 days (Source)	9025 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004897	9025_13 days (Source)	9025 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004898	9025_10 days (Source)	9025 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004899	9025_9 days (Source)	9025 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004900	9003_10 days (Source)	9003 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004901	9025_8 days (Source)	9025 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004902	9025_7 days (Source)	9025 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004903	9025_4 days (Source)	9025 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004904	9025_1 days (Source)	9025 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004905	9025_0 days (Source)	9025 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004906	9024_15 days (Source)	9024 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004907	9024_14 days (Source)	9024 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004908	9024_13 days (Source)	9024 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004909	9024_12 days (Source)	9024 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004910	9024_11 days (Source)	9024 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004911	9003_9 days (Source)	9003 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004912	9024_7 days (Source)	9024 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004913	9024_6 days (Source)	9024 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004914	9024_5 days (Source)	9024 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004915	9024_4 days (Source)	9024 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004916	9024_3 days (Source)	9024 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004917	9024_2 days (Source)	9024 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004918	9024_1 days (Source)	9024 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004919	9024_0 days (Source)	9024 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004920	9022_15 days (Source)	9022 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004921	9022_14 days (Source)	9022 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004922	9003_8 days (Source)	9003 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004923	9022_12 days (Source)	9022 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004924	9022_11 days (Source)	9022 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004925	9022_10 days (Source)	9022 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004926	9022_9 days (Source)	9022 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004927	9022_7 days (Source)	9022 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004928	9022_6 days (Source)	9022 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004929	9022_5 days (Source)	9022 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004930	9022_4 days (Source)	9022 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004931	9022_3 days (Source)	9022 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004932	9022_2 days (Source)	9022 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004933	9003_7 days (Source)	9003 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004934	9002_3 days (Source)	9002 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004935	9022_1 days (Source)	9022 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004936	9019_15 days (Source)	9019 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004937	9019_14 days (Source)	9019 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004938	9019_13 days (Source)	9019 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004939	9019_12 days (Source)	9019 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004940	9019_11 days (Source)	9019 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004941	9019_10 days (Source)	9019 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004942	9019_9 days (Source)	9019 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004943	9019_8 days (Source)	9019 (Source)	8	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004944	9019_7 days (Source)	9019 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004945	9003_6 days (Source)	9003 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004946	9019_6 days (Source)	9019 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004947	9019_5 days (Source)	9019 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004948	9019_4 days (Source)	9019 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004949	9019_3 days (Source)	9019 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004950	9019_2 days (Source)	9019 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004951	9019_1 days (Source)	9019 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004952	9019_0 days (Source)	9019 (Source)	0	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004953	9017_15 days (Source)	9017 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004954	9017_14 days (Source)	9017 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004955	9017_13 days (Source)	9017 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004956	9003_4 days (Source)	9003 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004957	9017_12 days (Source)	9017 (Source)	12	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004958	9017_11 days (Source)	9017 (Source)	11	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004959	9017_10 days (Source)	9017 (Source)	10	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004960	9017_9 days (Source)	9017 (Source)	9	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004961	9017_7 days (Source)	9017 (Source)	7	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004962	9017_6 days (Source)	9017 (Source)	6	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004963	9017_5 days (Source)	9017 (Source)	5	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004964	9017_4 days (Source)	9017 (Source)	4	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004965	9017_3 days (Source)	9017 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004966	9017_2 days (Source)	9017 (Source)	2	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004967	9003_3 days (Source)	9003 (Source)	3	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004968	9017_1 days (Source)	9017 (Source)	1	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004969	9016_15 days (Source)	9016 (Source)	15	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004970	9016_14 days (Source)	9016 (Source)	14	Homo sapiens	Colon	Feces	Colon	Stool
+SRR13004971	9016_13 days (Source)	9016 (Source)	13	Homo sapiens	Colon	Feces	Colon	Stool

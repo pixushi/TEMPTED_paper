@@ -1,0 +1,32 @@
+Participant_Id	BMI [CMO_0000105]	Case or control participant [EUPATH_0010375]	City, village, or region [ENVO_00000856]	Country [ENVO_00000009]	Diet [EUPATH_0011732]	Height [EUPATH_0010075]	Subject common name [OBI_0003074]	Weight (kg) [IAO_0000414]
+9002 (Source)	21.3	False	Philadelphia, PA	United States of America	Vegan	168	Human	60.1
+9003 (Source)	20.3	False	Philadelphia, PA	United States of America	EEN	174.3	Human	61.7
+9004 (Source)	21.7	False	Philadelphia, PA	United States of America	Vegan	176.2	Human	67.3
+9005 (Source)	21.6	False	Philadelphia, PA	United States of America	Omnivore	180	Human	70
+9006 (Source)	28.2	False	Philadelphia, PA	United States of America	Omnivore	176	Human	87.3
+9008 (Source)	20	False	Philadelphia, PA	United States of America	Vegan	178.3	Human	63.5
+9009 (Source)	22.4	False	Philadelphia, PA	United States of America	EEN	174	Human	67.8
+9010 (Source)	21.8	False	Philadelphia, PA	United States of America	Omnivore	170.7	Human	63.4
+9013 (Source)	24.1	False	Philadelphia, PA	United States of America	EEN	184	Human	81.6
+9014 (Source)	20.9	False	Philadelphia, PA	United States of America	Vegan	167	Human	58.4
+9015 (Source)	20.5	False	Philadelphia, PA	United States of America	Omnivore	173	Human	61.3
+9016 (Source)	25.6	False	Philadelphia, PA	United States of America	EEN	165.7	Human	70.2
+9017 (Source)	20.6	False	Philadelphia, PA	United States of America	Vegan	183.3	Human	69.3
+9019 (Source)	21.8	False	Philadelphia, PA	United States of America	Omnivore	174.3	Human	66.3
+9022 (Source)	21.8	False	Philadelphia, PA	United States of America	Vegan	187	Human	76.2
+9024 (Source)	34.6	False	Philadelphia, PA	United States of America	EEN	159.7	Human	88.3
+9025 (Source)	30.8	False	Philadelphia, PA	United States of America	EEN	176	Human	95.5
+9026 (Source)	21.3	False	Philadelphia, PA	United States of America	Vegan	164	Human	57.2
+9027 (Source)	25.1	False	Philadelphia, PA	United States of America	Vegan	163	Human	66.8
+9029 (Source)	35.4	False	Philadelphia, PA	United States of America	EEN	170	Human	102.4
+9030 (Source)	27.7	False	Philadelphia, PA	United States of America	Omnivore	180.3	Human	90
+9031 (Source)	22.8	False	Philadelphia, PA	United States of America	Vegan	163	Human	60.6
+9032 (Source)	31	False	Philadelphia, PA	United States of America	EEN	176	Human	96
+9033 (Source)	27.1	False	Philadelphia, PA	United States of America	Omnivore	170.2	Human	78.6
+9034 (Source)	25.3	False	Philadelphia, PA	United States of America	EEN	171	Human	74
+9035 (Source)	19.7	False	Philadelphia, PA	United States of America	Vegan	187.3	Human	69
+9036 (Source)	23.9	False	Philadelphia, PA	United States of America	Omnivore	178	Human	75.8
+9037 (Source)	23	False	Philadelphia, PA	United States of America	Omnivore	176	Human	71.3
+9038 (Source)	34.3	False	Philadelphia, PA	United States of America	EEN	160	Human	87.9
+9040 (Source)	23.7	False	Philadelphia, PA	United States of America	Omnivore	173	Human	71
+NA (Source)		True	Philadelphia, PA	United States of America				
