@@ -11,7 +11,7 @@ from qiime2.plugins.gemelli.actions import ctf
 # reading in the txt data table
 npc = int(r.npc)
 ss = str(int(r.ss))
-jj = str(int(r.ntime))
+pm = str(int(r.pm))
 dp = str(int(r.depthkk))
 # obtain meta data and otu table
 meta_table = r.meta_sub
@@ -28,14 +28,16 @@ otu_q2 = Artifact.import_data("FeatureTable[Frequency]",otu_table)
 ctf_results  = ctf(otu_q2, meta_q2,
                            'SubjectID',
                            'study_day',
-                           min_feature_frequency = 5,
-                           max_iterations_rptm = 5 ,
-                           n_initializations = 5 ,
+			   min_sample_count = 0, 
+			   min_feature_count = 0, 
+			   min_feature_frequency = 0,
+                           max_iterations_rptm = 5,
+                           n_initializations = 5,
                            max_iterations_als = 5,
-                           n_components=npc)
+                           n_components = npc)
 
 
 # save results
 for id_, art_ in ctf_results.__dict__.items():
     if id_ != '_fields' and ('subject_biplot' in id_ or 'distance' in id_) :
-        art_.save(os.path.join('simresult_ctf',id_.replace('_', '-')+'_sim'+ss+'_ntime'+jj+'_depth'+dp+'K'))
+        art_.save(os.path.join('simresult_ctf',id_.replace('_', '-')+'_sim'+ss+'_pmiss'+pm+'_depth'+dp+'K'))
