@@ -18,14 +18,11 @@ library(dplyr)
 library(tidyverse)
 library(RColorBrewer)
 library(ggpubr)
+library(tempted)
 
 # set working directory to be where the current script is located
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
-
-
-source('../TEMPTED.R')
 color_RB <- brewer.pal(3,'Set1')[1:2]
-
 ```
 
 
@@ -141,48 +138,4 @@ grid.arrange(p_sub_box, p_bar, p_feat_ratio_summary, layout_matrix=lay)
 dev.off()
 
 ```
-
-
-## Plot simulation results for PEMANOVA F
-
-```{r simulation}
-tab_Fmodel <- read.csv("result/perm-res.csv", row.names=1)
-tab_Fmodel$metric[tab_Fmodel$metric=="FT-SVD"] <- "TEMPTED"
-tab_Fmodel <- dplyr::filter(tab_Fmodel, seq_depth>=50000 & metric!="Jaccard")
-tab_Fmodel$seq_depth <- paste0("Reads Per Sample = ", tab_Fmodel$seq_depth/1000, "K")
-tab_Fmodel$seq_depth <- factor(tab_Fmodel$seq_depth, levels=
-                                 c("Reads Per Sample = 50K", "Reads Per Sample = 100K", "Reads Per Sample = 150K"))
-
-tab1 <- aggregate(test.statistic~n_samples+metric+seq_depth, data=tab_Fmodel, 
-                  FUN=mean)
-names(tab1)[4] <- 'mean'
-tab2 <- aggregate(test.statistic~n_samples+metric+seq_depth, data=tab_Fmodel, 
-                  FUN=function(x){sd(x)/sqrt(length(x))})
-names(tab2)[4] <- 'sd'
-rownames(tab1) <-rownames(tab2) <- NULL
-tab_Fmodel_summary <- merge(tab1, tab2)
-
-color_method <- c('#ff7f00', #orange for Bray
-                  '#33a02c', #green for CTF
-#                  '#0096FF', #blue for microTensor
-                  '#5A5A5A') #gray for TEMPTED
-p_Fmodel_summary <- ggplot(data=tab_Fmodel_summary, 
-                           aes(x=n_samples, y=mean, group=metric, color=metric)) + 
-  geom_line(size=1) + geom_point(position=position_dodge(0.2), size=2) +
-  geom_errorbar(aes(ymin=mean-2*sd, ymax=mean+2*sd, width=0.5), 
-                position=position_dodge(0.2), size=1) + 
-  facet_grid(~seq_depth) +
-  scale_x_continuous(breaks=2:10) + 
-  scale_color_manual(values=color_method) +
-  ylab('PERMANOVA F-value') + xlab('Number of Time Points') + 
-  theme_bw() + 
-  theme(legend.position = "bottom")
-p_Fmodel_summary
-
-pdf("../figure_table/realsim_vaginal_Fvalue.pdf", width=10, height=4)
-p_Fmodel_summary
-dev.off()
-```
-
-
 
