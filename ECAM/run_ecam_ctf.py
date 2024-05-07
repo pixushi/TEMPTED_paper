@@ -26,9 +26,9 @@ otu_q2 = Artifact.import_data("FeatureTable[Frequency]",otu_table)
 ctf_results  = ctf(otu_q2, meta_q2,
                            'studyid',
                            'visit',
-#			   min_sample_count = 0,
-#			   min_feature_count = 0, 
-#			   min_feature_frequency = 0,
+			   min_sample_count = 0,
+			   min_feature_count = 0, 
+			   min_feature_frequency = 0,
                            max_iterations_rptm = 5 ,
                            n_initializations = 5 ,
                            max_iterations_als = 5,
@@ -36,6 +36,6 @@ ctf_results  = ctf(otu_q2, meta_q2,
 
 
 # save results
-#for id_, art_ in ctf_results.__dict__.items():
-#    if id_ != '_fields' and ('subject_biplot' in id_ or 'distance' in id_) :
-#        art_.save(os.path.join('simresult_ctf',id_.replace('_', '-')+'_sim'+ss+'_ntime'+jj))
+for id_, art_ in ctf_results.__dict__.items():
+    if id_ != '_fields' and ('subject_biplot' in id_ or 'distance' in id_) :
+        art_.save(os.path.join('simresult_ctf',id_.replace('_', '-')+'_sim'+ss+'_ntime'+jj))
