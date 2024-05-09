@@ -1010,23 +1010,6 @@ color_method <- c("#33a02c", #green for CTF
                   "#5A5A5A") #gray for TEMPTED
 
 ann_text <- tab_auc_subj_summary[2,]
-ann_text$mean <- 0.5-0.015
-ann_text$nsample <- 6.5
-p_subj_roc <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="ROC"), 
-                           aes(x=nsample, y=mean, group=paste0(type,method), color=method)) + 
-  geom_line(size=1, position=position_dodge(0.5), aes(linetype=type)) + 
-  geom_point(size=2, position=position_dodge(0.5)) +
-  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
-                position=position_dodge(0.5), size=1) + 
-  geom_hline(yintercept=0.5, linetype="dotted", color = "black", size=1) +
-  geom_text(data = ann_text,label = "At random", color="black") +
-  facet_wrap(.~classify) +
-  labs(y="AUC-ROC error", x="Number of Time Points") + 
-  ggtitle("Subject Level") +
-  scale_color_manual(values=color_method) +
-  theme_bw()
-
-ann_text <- tab_auc_subj_summary[2,]
 ann_text$mean <- mean(!metauni$delivery_ind)-0.015
 ann_text$nsample <- 6.5
 p_subj_pr <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="PR"), 
@@ -1198,14 +1181,15 @@ reconstruct <- function(res_tempted, res_svd=NULL, datlist=NULL, r_reconstruct =
 }
 ```
 
+
+
 ```{r reconstruct_tempted, eval=FALSE}
 rmax <- 10
 smooth <- c(1, 0.1, 0.01, 0.005, rep(1e-4, 5))
 R2_tempted_mean <- R2_tempted_nomean <- matrix(0, nsim, rmax)
 for (ss in 1:nsim){
   print(ss)
-  # use the 9 time point simulated datasets
-  jj <- length(nkeep)
+  jj <- 8
   meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
   count_sub <- count_tab[rownames(meta_sub),]
   meta_sub$studyid <- as.character(meta_sub$studyid)
@@ -1233,23 +1217,20 @@ for (ss in 1:nsim){
     R2_tempted_nomean[ss,r] <- 1-sum((vec_est_nomean-vec_obs)^2)/sum(vec_obs^2)
   }
   if (ss%%10==0){
-    write.csv(R2_tempted_nomean, file="result/ecam_reconstruction_tempted_nomean.csv")
-    write.csv(R2_tempted_mean, file="result/ecam_reconstruction_tempted_mean.csv")
+    write.csv(R2_tempted_nomean, file=paste0("result/ecam_reconstruction_tempted_nomean_ntime", nkeep[jj], ".csv"))
+    write.csv(R2_tempted_mean, file=paste0("result/ecam_reconstruction_tempted_mean_ntime", nkeep[jj], ".csv"))
   }
 }
-
 ```
 
 ## FTSVD 
-
 
 ```{r reconstruct_ftsvd, eval=FALSE}
 rmax <- 10
 R2_ftsvd_mean <- R2_ftsvd_nomean <- matrix(0, nsim, rmax)
 for (ss in 1:nsim){
   print(ss)
-  # use the 9 time point simulated datasets
-  jj <- length(nkeep)
+  jj <- 8
   meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
   count_sub <- count_tab[rownames(meta_sub),]
   meta_sub$studyid <- as.character(meta_sub$studyid)
@@ -1277,12 +1258,11 @@ for (ss in 1:nsim){
     R2_ftsvd_nomean[ss,r] <- 1-sum((vec_est_nomean-vec_obs)^2)/sum(vec_obs^2)
   }
   if (ss%%10==0){
-    write.csv(R2_ftsvd_nomean, file="result/ecam_reconstruction_ftsvd_nomean.csv")
-    write.csv(R2_ftsvd_mean, file="result/ecam_reconstruction_ftsvd_mean.csv")
+    write.csv(R2_tempted_nomean, file=paste0("result/ecam_reconstruction_ftsvd_nomean_ntime", nkeep[jj], ".csv"))
+    write.csv(R2_tempted_mean, file=paste0("result/ecam_reconstruction_ftsvd_mean_ntime", nkeep[jj], ".csv"))
   }
 }
 ```
-
 ## CTF
 
 ```{r reconstruct_ctf, eval=FALSE}
@@ -1296,7 +1276,7 @@ py_run_file(file="run_ecam_ctf_reconstruct.py",convert=F)
 fname <- c("ctf_nomean", "tempted_nomean", "tempted_mean", "ftsvd_nomean", "ftsvd_mean")
 tab_R2 <- NULL
 for (ii in 1:length(fname)){
-  R2_csv <- read.csv(paste0("result/ecam_reconstruction_", fname[ii], ".csv"), header=T, row.names = 1)
+  R2_csv <- read.csv(paste0("result/ecam_reconstruction_", fname[ii], "_ntime9.csv"), header=T, row.names = 1)
   mthd <- toupper(strsplit(fname[ii], "_")[[1]][1])
   mean_subtract <- ifelse(strsplit(fname[ii], "_")[[1]][2]=="mean", "Yes", "No")
   if(is.na(mean_subtract)) mean_subtract <- "No"
@@ -1316,7 +1296,6 @@ names(tab2)[4] <- "se"
 rownames(tab1) <-rownames(tab2) <- NULL
 tab_R2_summary <- merge(tab1, tab2)
 tab_R2_summary$mean_subtract <- factor(tab_R2_summary$mean_subtract, levels=c("Yes", "No"))
-
 tab_R2_summary <- tab_R2_summary %>%
   mutate(normalization = ifelse(method=="CTF", "rclr", "clr"), wd=0.5)
 ```
