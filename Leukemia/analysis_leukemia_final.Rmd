@@ -194,7 +194,7 @@ p_feat_ratio_summary <- plot_feature_summary(feature_mat_ratio,
 
 ## Plot all results for main text
 
-```{r tempted_allplot, fig.width = 10, fig.height=3}
+```{r tempted_allplot, fig.width = 12, fig.height=3.5}
 lay <- rbind(c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), c(1,2,3,3), 
              c(4,5,5,5))
 lgd1 <- get_legend(p_time_tempted)
@@ -204,7 +204,7 @@ p_tempted_all <- grid.arrange(p_time_tempted+theme(legend.position="none"),
                           p_feat_ratio_summary+theme(legend.position="none"),
                           lgd1, lgd2,
                           layout_matrix=lay)
-ggsave('../figure_table/leukemia_tempted.pdf', width=10, height=3, plot=p_tempted_all)
+ggsave('../figure_table/leukemia_tempted.pdf', width=12, height=3.5, plot=p_tempted_all)
 ```
 
 
@@ -273,7 +273,7 @@ for (ii in 2:3){
     theme_bw() + 
     labs(x="Week", y="Relative Abundance", color=ifelse(ii==2, "Outcome", "Genotype")) + 
     ggtitle(paste0("Top Features Identified by Component ", ii)) + theme(legend.position="bottom") + 
-     coord_trans(y="sqrt")
+     scale_y_sqrt()
   if (ii==2){
     p_topfeat_tempted <- p_topfeat_tempted + geom_vline(xintercept = 35, linetype="dashed", 
                 color = "grey", linewidth=1)

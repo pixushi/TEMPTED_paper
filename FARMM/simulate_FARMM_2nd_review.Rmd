@@ -1,0 +1,1283 @@
+---
+title: "Simulation Based on FARMM Data"
+author: "Pixu Shi"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+# Preparation
+
+## Library
+
+```{r}
+reticulate::use_condaenv("/Users/pixushi/miniconda3/envs/qiime2-2021.2")
+# for computing
+library(reticulate) # run py codes
+library(vegan) # distance matrix
+library(phyloseq) # to handle phyloseq object
+library(PERMANOVA) # permanova
+library(randomForest) # random forest
+library(PRROC) # roc and pr
+library(tempted)
+library(microTensor)
+
+# for data
+library(qiime2R) # read in Qiime artifacts
+library(dplyr) # data formatting
+library(readr)
+
+# for plotting
+library(ggpubr)
+library(ggplot2)
+library(gridExtra)
+library(RColorBrewer)
+
+rm(list=ls())
+# set working directory to be where the current script is located
+mydir <- dirname(rstudioapi::getSourceEditorContext()$path)
+setwd(mydir)
+color_RB <- brewer.pal(3,'Set1')
+```
+
+## Read in the data
+
+```{r}
+# meta data table
+load("data/df_samples.RData")
+meta_tab <- as.data.frame(df_samples)
+rownames(meta_tab) <- meta_tab$SampleID
+metauni <- unique(meta_tab[,c('SubjectID', 'study_group')])
+rownames(metauni) <- metauni$SubjectID
+
+prop_tab <- readr::read_tsv("data/kraken_results.tsv")
+prop_tab <- as.data.frame(prop_tab)
+rownames(prop_tab) <- prop_tab[,1]
+prop_tab <- prop_tab[,-1]
+prop_tab <- t(prop_tab)
+prop_tab <- prop_tab[rownames(meta_tab),]
+prop_tab <- prop_tab[,colSums(prop_tab!=0)>=5]
+prop_tab <- prop_tab[rowSums(prop_tab!=0)>=5,]
+meta_tab <- meta_tab[rownames(prop_tab),]
+dim(prop_tab)
+dim(meta_tab)
+table(meta_tab$study_day)
+# remove time 0 because vegan group doesn't have time 0
+meta_tab <- meta_tab %>%
+  dplyr::filter(study_day!=0)
+prop_tab <- prop_tab[rownames(meta_tab),]
+nrow(meta_tab)/30/15
+```
+
+
+
+## Plot timeline of study
+
+```{r timeline}
+meta_reordered <- meta_tab[order(meta_tab$study_group, decreasing=T),]
+meta_reordered$SubjectID <- factor(meta_reordered$SubjectID, 
+                                 unique(meta_reordered$SubjectID))
+p_timeline <- ggplot(data=meta_reordered, 
+       aes(x=study_day, y=SubjectID, 
+           group=SubjectID, color=study_group, shape=study_group)) +
+  geom_line() + geom_point() + scale_color_manual(values=color_RB) +
+  labs(y="Host ID", x="Study Day", color="Dietary Group", shape="Dietary Group") + 
+  theme_bw() +
+  theme(legend.position="bottom")
+p_timeline
+pdf('../figure_table/FARMM_timeline.pdf', width=7.7, height=5)
+print(p_timeline)
+dev.off()
+```
+
+
+# Run with the entire dataset
+
+## TEMPTED
+
+```{r run_tempted_ori}
+npc <- 2
+
+set.seed(0)
+count_tab <- t(apply(prop_tab,1,function(x){rmultinom(1,50000,x)}))
+
+subdata <- format_tempted(count_tab, meta_tab$study_day, meta_tab$SubjectID, 
+                        threshold=1, pseudo=0.5,
+                        transform="clr")
+# run tempted with all subjects and run permanova test
+svd_sub <- svd_centralize(subdata)
+res_tempted <- tempted(svd_sub$datlist, r = npc, resolution = 101, smooth=1e-4)
+agg_feat <- aggregate_feature(res_tempted, NULL, subdata)
+aggfeat_mat <- reshape(agg_feat$metafeature_aggregate[,1:4],
+                       idvar=c("subID","timepoint") ,
+                       v.names=c("value"), timevar="PC",
+                       direction="wide")
+colnames(aggfeat_mat)[1] <- 'SubjectID'
+aggfeat_mat <- merge(aggfeat_mat, metauni, by='SubjectID')
+aggfeat_mat[,2+1:npc] <- apply(aggfeat_mat[,2+1:npc], 2, scale)
+tempted_sub <- as.data.frame(res_tempted$A_hat)
+tempted_sub$`intercept` <- svd_sub$A_tilde
+tempted_sub$SubjectID <- rownames(tempted_sub)
+tempted_sub <- merge(metauni, tempted_sub)
+colnames(tempted_sub)[1:npc+2] <- paste0("PC",1:npc)
+
+par(mfrow=c(1,3))
+with(tempted_sub, boxplot(PC1~study_group))
+with(tempted_sub, boxplot(PC2~study_group))
+with(tempted_sub, plot(PC1, PC2, col=1+(study_group=="EEN")))
+```
+
+## microTensor
+
+```{r run_microtensor_ori}
+X_array <- array(NA, dim = c(ncol(count_tab),
+                         length(unique(meta_tab$SubjectID)),
+                         16))
+dimnames(X_array) <- list(colnames(count_tab),
+                          unique(meta_tab$SubjectID),
+                          0:15)
+for(k in seq(1, dim(X_array)[3])) {
+  k_df_samples <- meta_tab %>% 
+    dplyr::filter(study_day == k-1)
+  k_df_samples <- k_df_samples[!duplicated(k_df_samples$SubjectID),]
+  X_array[, k_df_samples$SubjectID, k] <- 
+    t(count_tab[rownames(k_df_samples), ])
+}
+set.seed(0)
+fit_microTensor <- 
+  microTensor::microTensor(X = X_array, R = npc, 
+                           nn_t = TRUE, ortho_m = TRUE,
+                           weighted = TRUE,
+                           control = list(L_init = 2,
+                                          gamma = 2,
+                                          maxit = 1000,
+                                          verbose = TRUE))
+micro_sub <- as.data.frame(fit_microTensor$s)
+colnames(micro_sub) <- paste0("PC",1:npc)
+micro_sub$SubjectID <- dimnames(X_array)[[2]]
+micro_sub <- merge(metauni, micro_sub)
+
+par(mfrow=c(1,3))
+with(micro_sub, boxplot(PC1~study_group))
+with(micro_sub, boxplot(PC2~study_group))
+with(micro_sub, plot(PC1, PC2, col=1+(study_group=="EEN")))
+```
+
+## CTF
+
+```{r run_ctf_ori}
+ss <- 0
+pm <- 0
+depthkk <- 0
+npc <- 2
+meta_sub <- meta_tab[,c("study_day", "SubjectID", "study_group")]
+count_sub <- as.data.frame(count_tab)
+# if a sample only has one taxon, CTF fails to run, so such samples are removed
+count_sub <- count_sub[rowSums(count_sub!=0)>1,]
+meta_sub <- meta_sub[rownames(count_sub),]
+meta_sub$SubjectID <- as.character(meta_sub$SubjectID)
+py_run_file(file="run_farmm_ctf.py",convert=F)
+
+metauni_sub <- unique(meta_sub[,c('SubjectID', 'study_group')])
+rownames(metauni_sub) <- metauni_sub$SubjectID
+fname <- paste0("subject-biplot_sim", ss, "_pmiss", pm, "_depth", depthkk, "K.qza")
+ctf_sub <- read_qza(file.path("simresult_ctf", fname))$data$Vectors
+colnames(ctf_sub)[1] <- "SubjectID"
+ctf_sub <- merge(ctf_sub, metauni_sub)
+
+par(mfrow=c(1,3))
+with(ctf_sub, boxplot(PC1~study_group))
+with(ctf_sub, boxplot(PC2~study_group))
+with(ctf_sub, plot(PC1, PC2, col=1+(study_group=="EEN")))
+```
+
+
+# Simulated data
+
+```{r setup}
+depth <- c(5e4, 1e5, 5e5)
+pmiss <- seq(from=20,to=50,by=5)
+nkeep <- round(30*15*(1-pmiss/100))
+nsim <- 100
+npc <- 2
+```
+
+
+```{r simulate_data, eval=FALSE}
+meta_tab2 <- meta_tab[,c("study_day", "SubjectID", "study_group")]
+for (ss in 1:nsim){
+  set.seed(ss)
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    sampleID_temp <- sample(rownames(meta_tab2), nkeep[jj])
+    meta_sub <- meta_tab2[sampleID_temp,]
+    # make sure each subject has more than 2 samples
+    while(min(table(meta_sub$SubjectID))<=2){
+      sampleID_temp <- sample(rownames(meta_tab2), nkeep[jj])
+      meta_sub <- meta_tab2[sampleID_temp,]
+    }
+    for (kk in 1:length(depth)){
+          count_sub <- t(apply(prop_tab[sampleID_temp,], 1, 
+                               function(x){rmultinom(1,50000,x)}))
+          write.csv(cbind(meta_sub, count_sub), file=paste0("simdata/realsim", ss, "_pmiss", pmiss[jj], "_depth", depth[kk]/1000, "K.csv"))
+    }
+  }
+}
+```
+
+
+
+
+# TEMPTED
+
+## Run TEMPTED
+
+Save subject loading and trajectory
+
+```{r run_tempted, eval=FALSE}
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(pmiss)){
+    for (kk in 1:length(depth)){
+      dat_sub <- read.csv(paste0("simdata/realsim", ss, "_pmiss", pmiss[jj], "_depth", depth[kk]/1000, "K.csv"), header=T, row.names=1)
+      count_sub <- dat_sub[,-c(1:3)]
+      meta_sub <- dat_sub[,1:3]
+      meta_sub$SubjectID <- as.character(meta_sub$SubjectID)
+      subdata <- format_tempted(count_sub, meta_sub$study_day, meta_sub$SubjectID, 
+                              threshold=1, pseudo=0.5,
+                              transform="clr")
+      # run tempted with all subjects
+      svd_sub <- svd_centralize(subdata)
+      res_tempted <- tempted(svd_sub$datlist, r = npc, resolution = 51, smooth=0.0001)
+      # plot_time_loading(res_tempted)
+      agg_feat <- aggregate_feature(res_tempted, NULL, subdata)
+      aggfeat_mat <- reshape(agg_feat$metafeature_aggregate[,1:4],
+                             idvar=c("subID","timepoint") ,
+                             v.names=c("value"), timevar="PC",
+                             direction="wide")
+      colnames(aggfeat_mat)[1] <- 'SubjectID'
+      aggfeat_mat <- merge(aggfeat_mat, metauni, by='SubjectID')
+      aggfeat_mat[,2+1:npc] <- apply(aggfeat_mat[,2+1:npc], 2, scale)
+      tempted_sub <- as.data.frame(res_tempted$A_hat)
+      tempted_sub$`intercept` <- svd_sub$A_tilde
+      tempted_sub$SubjectID <- rownames(tempted_sub)
+      tempted_sub <- merge(metauni, tempted_sub)
+      write.csv(aggfeat_mat, 
+                file=paste0('simresult_tempted/tempted_traj_sim',ss,'_pmiss',pmiss[jj], "_depth", depth[kk]/1000, 'K.csv'))
+      write.csv(tempted_sub, 
+                file=paste0('simresult_tempted/tempted_subj_sim',ss,'_pmiss',pmiss[jj], "_depth", depth[kk]/1000, 'K.csv'))
+    }
+  }
+}
+```
+
+## In-sample ROC & PR
+
+-   Random forest
+-   Logistic regression
+
+```{r tempted_subj_insample_auc, eval=FALSE}
+for (kk in 1:length(depth)){
+  roc_sub_rf_tempted <- matrix(NA, nsim, length(pmiss))
+  colnames(roc_sub_rf_tempted) <- paste0("pmiss", pmiss)
+  pr_sub_glm_tempted <- pr_sub_rf_tempted <- 
+    roc_sub_glm_tempted <- roc_sub_rf_tempted
+  for (jj in 1:length(pmiss)){
+    print(jj)
+    for (ss in 1:nsim){
+      fname <- paste0('tempted_subj_sim',ss,'_pmiss',pmiss[jj], '_depth', depth[kk]/1000, 'K.csv')
+      tempted_sub <- read.csv(file.path("simresult_tempted", fname), row.names=1)
+      tempted_sub$ind_een <- tempted_sub$study_group=="EEN"
+      # random forest
+      rf_fit <- randomForest(as.factor(ind_een) ~ PC1+PC2,
+                     data = tempted_sub)
+      predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+      ind_een <- tempted_sub$ind_een
+      roc_sub_rf_tempted[ss,jj] <- roc.curve(predprob_rf[ind_een], 
+                                   predprob_rf[!ind_een])$auc
+      pr_sub_rf_tempted[ss,jj] <- pr.curve(predprob_rf[ind_een], 
+                                   predprob_rf[!ind_een])$auc.integral
+      # logistic regression
+      glm_fit <- glm(ind_een ~ PC1+PC2, 
+                    family = binomial(link="logit"),
+                    data = tempted_sub)
+      predprob_glm <- predict(glm_fit, type = "response")
+      ind_een <- tempted_sub$ind_een
+      roc_sub_glm_tempted[ss,jj] <- roc.curve(predprob_glm[ind_een], 
+                                        predprob_glm[!ind_een])$auc
+      pr_sub_glm_tempted[ss,jj] <- pr.curve(predprob_glm[ind_een], 
+                                        predprob_glm[!ind_een])$auc.integral
+    }
+  }
+  write.csv(roc_sub_rf_tempted, 
+            file=paste0('result/realsim_farmm_roc_sub_rf_tempted_', depth[kk]/1000, 'K.csv'))
+  write.csv(roc_sub_glm_tempted, 
+            file=paste0('result/realsim_farmm_roc_sub_glm_tempted_', depth[kk]/1000, 'K.csv'))
+  write.csv(pr_sub_rf_tempted, 
+            file=paste0('result/realsim_farmm_pr_sub_rf_tempted_', depth[kk]/1000, 'K.csv'))
+  write.csv(pr_sub_glm_tempted, 
+            file=paste0('result/realsim_farmm_pr_sub_glm_tempted_', depth[kk]/1000, 'K.csv'))
+}
+```
+
+## Out-of-Sample 
+
+-   Random forest
+-   Logistic regression
+
+```{r run_oos, eval=FALSE}
+for (kk in 1:length(depth)){
+  roc_glm_oos <- matrix(NA, nsim, length(pmiss))
+  colnames(roc_glm_oos) <- paste0("pmiss", pmiss)
+  pr_rf_oos <- pr_glm_oos <- roc_rf_oos <- roc_glm_oos
+  for (jj in 1:length(pmiss)){
+    print(jj)
+    for (ss in 1:nsim){
+      dat_sub <- read.csv(paste0("simdata/realsim", ss, "_pmiss", pmiss[jj], "_depth", depth[kk]/1000, "K.csv"), header=T, row.names=1)
+      count_sub <- dat_sub[,-c(1:3)]
+      meta_sub <- dat_sub[,1:3]
+      meta_sub$SubjectID <- as.character(meta_sub$SubjectID)
+      subdata <- format_tempted(count_sub, meta_sub$study_day, meta_sub$SubjectID, 
+                              threshold=1, pseudo=0.5,
+                              transform="clr")
+      metauni_sub <- unique(meta_sub[,c("SubjectID", "study_group")])
+      metauni_sub$ind_een <- metauni_sub$study_group=="EEN"
+      # leave one out prediction
+      predprob_glm <- predprob_rf <- rep(NA, length(subdata))
+      
+      for (ii in 1:length(subdata)){
+        print(ii)
+        svd_train <- svd_centralize(subdata[-ii])
+        res_train <- tempted(svd_train$datlist, r = npc, resolution = 51, smooth=0.0001)
+        A_test <- est_test_subject(subdata[ii], res_train, svd_train)
+        dftrain <- data.frame(y=metauni_sub[-ii,'ind_een'], x=res_train$A)
+        dftest <- data.frame(y=metauni_sub[ii,'ind_een'], x=A_test)
+        # logistic regression
+        glm_fit <- glm(y ~ ., data = dftrain, family = "binomial")
+        predprob_glm[ii] <- predict(glm_fit, newdata=dftest, type = "response")
+        # random forest
+        rf_fit <- randomForest(as.factor(y) ~ ., data = dftrain)
+        predprob_rf[ii] <- predict(rf_fit, newdata=dftest, type = "prob")[,"TRUE"]
+      }
+      roc_rf_oos[ss,jj] <- roc.curve(predprob_rf[metauni_sub$ind_een], 
+                                          predprob_rf[!metauni_sub$ind_een])$auc
+      roc_glm_oos[ss,jj] <- roc.curve(predprob_glm[metauni_sub$ind_een], 
+                                          predprob_glm[!metauni_sub$ind_een])$auc
+      pr_rf_oos[ss,jj] <- pr.curve(predprob_rf[metauni_sub$ind_een], 
+                                          predprob_rf[!metauni_sub$ind_een])$auc.integral
+      pr_glm_oos[ss,jj] <- pr.curve(predprob_glm[metauni_sub$ind_een], 
+                                          predprob_glm[!metauni_sub$ind_een])$auc.integral
+    }
+    write.csv(roc_rf_oos, file=paste0("result/realsim_farmm_roc_oos_rf_tempted_", depth[kk]/1000, "K.csv"))
+    write.csv(roc_glm_oos, file=paste0("result/realsim_farmm_roc_oos_glm_tempted_", depth[kk]/1000, "K.csv"))
+    write.csv(pr_rf_oos, file=paste0("result/realsim_farmm_pr_oos_rf_tempted_", depth[kk]/1000, "K.csv"))
+    write.csv(pr_glm_oos, file=paste0("result/realsim_farmm_pr_oos_glm_tempted_", depth[kk]/1000, "K.csv"))
+  }
+}
+
+```
+
+# CTF
+
+## Run CTF
+
+Save subject distance matrix and trajectory
+
+```{r run_ctf, eval=FALSE}
+for (ss in 1:nsim){
+  print(ss)
+  set.seed(0)
+  for (jj in 1:length(pmiss)){
+    pm <- pmiss[jj]
+    for(kk in 1:length(depth)){
+      depthkk <- depth[kk]/1000
+      dat_sub <- read.csv(paste0("simdata/realsim", ss, "_pmiss", pmiss[jj], '_depth', depth[kk]/1000, "K.csv"), header=T, row.names=1)
+      meta_sub <- dat_sub[,1:3]
+      count_sub <- dat_sub[,-c(1:3)]
+      # if a sample only has one taxon, CTF fails to run, so such samples are removed
+      count_sub <- count_sub[rowSums(count_sub!=0)>1,]
+      meta_sub <- meta_sub[rownames(count_sub),]
+      meta_sub$SubjectID <- as.character(meta_sub$SubjectID)
+      py_run_file(file="run_farmm_ctf.py",convert=F)
+    }
+  }
+}
+
+```
+
+## In-sample ROC & PR
+
+-   Random forest
+-   Logistic regression
+
+```{r ctf_subj_insample_auc, eval=FALSE}
+for (kk in 1:length(depth)){
+  roc_sub_rf_ctf <- matrix(NA, nsim, length(pmiss))
+  colnames(roc_sub_rf_ctf) <- paste0("pmiss", pmiss)
+  pr_sub_glm_ctf <- pr_sub_rf_ctf <- roc_sub_glm_ctf <- roc_sub_rf_ctf
+  for (jj in 1:length(pmiss)){
+    print(jj)
+    pm <- pmiss[jj]
+    for (ss in 1:nsim){
+      meta_sub <- read.csv(paste0("simdata/realsim", ss, "_pmiss", pmiss[jj], "_depth", depth[kk]/1000, "K.csv"), header=T, row.names=1)
+      meta_sub$SubjectID <- as.character(meta_sub$SubjectID)
+      metauni_sub <- unique(meta_sub[,c('SubjectID', 'study_group')])
+      rownames(metauni_sub) <- metauni_sub$SubjectID
+      fname <- paste0("subject-biplot_sim", ss, "_pmiss", pm, "_depth", depth[kk]/1000, "K.qza")
+      ctf_sub <- read_qza(file.path("simresult_ctf", fname))$data$Vectors
+      colnames(ctf_sub)[1] <- "SubjectID"
+      ctf_sub <- merge(ctf_sub, metauni_sub)
+      ctf_sub$ind_een <- ctf_sub$study_group=="EEN"
+      # random forest
+      rf_fit <- randomForest(as.factor(ind_een)~PC1+PC2, data=ctf_sub)
+      predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+      ind_een <- ctf_sub$ind_een
+      roc_sub_rf_ctf[ss,jj] <- roc.curve(predprob_rf[ind_een], 
+                                    predprob_rf[!ind_een])$auc
+      pr_sub_rf_ctf[ss,jj] <- pr.curve(predprob_rf[ind_een], 
+                                    predprob_rf[!ind_een])$auc.integral
+      # logistic regression
+      glm_fit <- glm(ind_een ~ PC1+PC2, 
+                    family = binomial(link="logit"),
+                    data = ctf_sub)
+      predprob_glm <- predict(glm_fit, type = "response")
+      ind_een <- ctf_sub$ind_een
+      roc_sub_glm_ctf[ss,jj] <- roc.curve(predprob_glm[ind_een], 
+                                        predprob_glm[!ind_een])$auc
+      pr_sub_glm_ctf[ss,jj] <- pr.curve(predprob_glm[ind_een], 
+                                        predprob_glm[!ind_een])$auc.integral
+    }
+  }
+  write.csv(roc_sub_rf_ctf, 
+            file=paste0('result/realsim_farmm_roc_sub_rf_ctf_', depth[kk]/1000, 'K.csv'))
+  write.csv(roc_sub_glm_ctf, 
+            file=paste0('result/realsim_farmm_roc_sub_glm_ctf_', depth[kk]/1000, 'K.csv'))
+  write.csv(pr_sub_rf_ctf, 
+            file=paste0('result/realsim_farmm_pr_sub_rf_ctf_', depth[kk]/1000, 'K.csv'))
+  write.csv(pr_sub_glm_ctf, 
+            file=paste0('result/realsim_farmm_pr_sub_glm_ctf_', depth[kk]/1000, 'K.csv'))
+}
+```
+
+
+# microTensor
+
+## Run microTensor
+
+Save subject loading and trajectory
+
+```{r run_microtensor, eval=FALSE}
+outdir <- "simresult_microtensor"
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(pmiss)){
+    for (kk in 1:length(depth)){
+      dat_sub <- read.csv(paste0("simdata/realsim", ss, "_pmiss", pmiss[jj], "_depth", depth[kk]/1000, "K.csv"), header=T, row.names=1)
+      count_sub <- dat_sub[,-c(1:3)]
+      meta_sub <- dat_sub[,1:3]
+      meta_sub$SubjectID <- as.character(meta_sub$SubjectID)
+      meta_sub$sampleid <- rownames(meta_sub)
+      set.seed(0)
+      X_array <- array(NA, dim = c(ncol(count_sub),
+                               length(unique(meta_sub$SubjectID)),
+                               15))
+      dimnames(X_array) <- list(colnames(count_sub),
+                                unique(meta_sub$SubjectID),
+                                1:15)
+      for(k in seq(1, dim(X_array)[3])) {
+        k_df_samples <- meta_sub %>% 
+          dplyr::filter(study_day == k)
+        k_df_samples <- k_df_samples[!duplicated(k_df_samples$SubjectID),]
+        X_array[, k_df_samples$SubjectID, k] <- 
+          t(count_sub[rownames(k_df_samples), ])
+      }
+      set.seed(1)
+      fit_microTensor <- 
+        microTensor::microTensor(X = X_array, R = npc, 
+                                 nn_t = TRUE, ortho_m = TRUE,
+                                 weighted = TRUE)
+      micro_sub <- as.data.frame(fit_microTensor$s)
+      colnames(micro_sub) <- paste0("PC",1:npc)
+      micro_sub$SubjectID <- dimnames(X_array)[[2]]
+      micro_sub <- merge(metauni, micro_sub)
+      write.csv(micro_sub, 
+                file=paste0(outdir, "/micro_subj_sim", ss, "_pmiss", pmiss[jj], "_depth", depth[kk]/1000, "K.csv"))
+      micro_traj <- microTensor::create_loading(fit_decomp = fit_microTensor,
+                                                feature_names = dimnames(X_array)[[1]],
+                                                subject_names = dimnames(X_array)[[2]],
+                                                time_names = 1:15,
+                                                class = "sample")
+      colnames(micro_traj) <- c("SubjectID", "study_day", paste0("PC",1:npc))
+      micro_traj <- merge(meta_sub[,c("sampleid","study_day","SubjectID", "study_group")], micro_traj)
+      write.csv(micro_traj, 
+                file=paste0(outdir, "/micro_traj_sim", ss, "_pmiss", pmiss[jj], "_depth", depth[kk]/1000, "K.csv"))
+    }
+  }
+}
+```
+
+## In-sample ROC & PR
+
+-   Random forest
+-   Logistic regression
+
+```{r micro_subj_insample_auc, eval=FALSE}
+suffix <- "microtensor"
+for (kk in 1:length(depth)){
+  roc_sub_rf_micro <- matrix(NA, nsim, length(pmiss))
+  colnames(roc_sub_rf_micro) <- paste0("pmiss", pmiss)
+  pr_sub_glm_micro <- pr_sub_rf_micro <- roc_sub_glm_micro <- roc_sub_rf_micro
+  for (jj in 1:length(pmiss)){
+    print(jj)
+    for (ss in 1:nsim){
+      fname <- paste0('micro_subj_sim',ss,'_pmiss',pmiss[jj], '_depth', depth[kk]/1000, 'K.csv')
+      micro_sub <- read.csv(file.path(paste0("simresult_", suffix), fname), row.names=1)
+      micro_sub$ind_een <- micro_sub$study_group=="EEN"
+      # random forest
+      rf_fit <- randomForest(as.factor(ind_een) ~ PC1+PC2,
+                     data = micro_sub)
+      predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+      ind_een <- micro_sub$ind_een
+      roc_sub_rf_micro[ss,jj] <- roc.curve(predprob_rf[ind_een], 
+                                        predprob_rf[!ind_een])$auc
+      pr_sub_rf_micro[ss,jj] <- pr.curve(predprob_rf[ind_een], 
+                                        predprob_rf[!ind_een])$auc.integral
+      # logistic regression
+      glm_fit <- glm(ind_een ~ PC1+PC2, 
+                    family = binomial(link="logit"),
+                    data = micro_sub)
+      predprob_glm <- predict(glm_fit, type = "response")
+      ind_een <- micro_sub$ind_een
+      roc_sub_glm_micro[ss,jj] <- roc.curve(predprob_glm[ind_een], 
+                                        predprob_glm[!ind_een])$auc
+      pr_sub_glm_micro[ss,jj] <- pr.curve(predprob_glm[ind_een], 
+                                        predprob_glm[!ind_een])$auc.integral
+    }
+  }
+  write.csv(roc_sub_rf_micro, 
+          file=paste0('result/realsim_farmm_roc_sub_rf_', suffix, '_', depth[kk]/1000, 'K.csv'))
+  write.csv(roc_sub_glm_micro, 
+          file=paste0('result/realsim_farmm_roc_sub_glm_', suffix, '_', depth[kk]/1000, 'K.csv'))
+    write.csv(pr_sub_rf_micro, 
+          file=paste0('result/realsim_farmm_pr_sub_rf_', suffix, '_', depth[kk]/1000, 'K.csv'))
+  write.csv(pr_sub_glm_micro, 
+          file=paste0('result/realsim_farmm_pr_sub_glm_', suffix, '_', depth[kk]/1000, 'K.csv'))
+}
+```
+
+
+# Summarize results
+
+## Summarize subject-level ROC and PR
+
+```{r summary_sub_classification}
+method  <- c("tempted", "ctf", "microtensor")
+measure <- c("roc", "pr")
+classify <- c("rf", "glm")
+
+tab_auc_subj <- NULL
+
+for (ms in measure){
+  for (cls in classify){ 
+    # in sample
+    for (mthd in method){
+      for (kk in 1:length(depth)){
+        fname <- paste0("result/realsim_farmm_", ms, "_sub_", cls, "_", mthd, "_", depth[kk]/1000, "K.csv")
+        tab0 <- read.csv(fname, row.names=1)
+        tab0 <- 1-as.matrix(tab0)
+        tab_tmp <- data.frame(sim=1:nsim,
+                        auc=as.vector(tab0),
+                        pm=as.vector(t(matrix(rep(pmiss,nsim),length(pmiss),nsim))),
+                        method=toupper(mthd), measure=toupper(ms),
+                        classify=cls,
+                        type="In-Sample", depth=depth[kk])
+        tab_auc_subj <- rbind(tab_auc_subj, tab_tmp)
+        # out of sample
+        if (mthd=="tempted"){
+          fname <- paste0("result/realsim_farmm_", ms, "_oos_", cls, "_tempted_", depth[kk]/1000, "K.csv")
+          tab0 <- read.csv(fname, row.names=1)
+          tab0 <- 1-as.matrix(tab0)
+          tab_tmp <- data.frame(sim=1:nsim,
+                                auc=as.vector(tab0),
+                          pm=as.vector(t(matrix(rep(pmiss,nsim),length(pmiss),nsim))),
+                          method="TEMPTED", measure=toupper(ms), classify=cls,
+                          type="Out-of-Sample", depth=depth[kk])
+          tab_auc_subj <- rbind(tab_auc_subj, tab_tmp)
+        }
+      }
+    }
+  }  
+}
+tab_auc_subj$classify <- gsub("rf", "Random Forest", tab_auc_subj$classify)
+tab_auc_subj$classify <- gsub("glm", "Logistic Regression", tab_auc_subj$classify)
+tab_auc_subj$method <- gsub("TEMPTED", "TEMPTED", tab_auc_subj$method)
+tab_auc_subj$method <- gsub("MICROTENSOR", "microTensor", tab_auc_subj$method)
+tab_auc_subj$depth_name <- paste0("Reads per Sample = ", 
+                                  tab_auc_subj$depth/1000, "K")
+tab_auc_subj$depth_name <- factor(tab_auc_subj$depth_name, 
+                                     levels=paste0("Reads per Sample = ", 
+                                  depth/1000, "K"))
+
+# summarize mean and error band for each method
+tab_auc_subj$pm <- as.factor(tab_auc_subj$pm)
+tab1 <- aggregate(auc~pm+measure+method+classify+type+depth_name, data=tab_auc_subj, 
+                  FUN=mean)
+names(tab1)[7] <- 'mean'
+tab2 <- aggregate(auc~pm+measure+method+classify+type+depth_name, data=tab_auc_subj, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[7] <- 'se'
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_auc_subj_summary <- merge(tab1, tab2)
+tab_auc_subj_summary$pm <- factor(tab_auc_subj_summary$pm, 
+                                     level=as.character(pmiss))
+
+
+# get the best AUC of the two methods
+tab_auc_subj_best <- aggregate(auc~sim+pm+measure+method+type+depth_name, data=tab_auc_subj, 
+                  FUN=min)
+
+# summarize mean and error band for the best of two methods
+tab_auc_subj_best$pm <- as.factor(tab_auc_subj_best$pm)
+tab1 <- aggregate(auc~pm+measure+method+type+depth_name, data=tab_auc_subj_best, 
+                  FUN=mean)
+names(tab1)[6] <- 'mean'
+tab2 <- aggregate(auc~pm+measure+method+type+depth_name, data=tab_auc_subj_best, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[6] <- 'se'
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_auc_subj_best_summary <- merge(tab1, tab2)
+tab_auc_subj_best_summary$pm <- factor(tab_auc_subj_best_summary$pm, 
+                                     level=as.character(pmiss))
+```
+
+## Plot all subject-level AUC-ROC error
+
+### Logistic regression and random forest separately
+
+```{r plot_sub_auc}
+color_method <- c('#33a02c', #green for CTF
+                  '#0096FF', #blue for microTensor
+                  '#5A5A5A') #gray for TEMPTED
+
+ann_text <- tab_auc_subj_summary[2,]
+ann_text$mean <- 0.5 - 0.015
+ann_text$pm <- 6
+p_subj_roc <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="ROC"), 
+                           aes(x=pm, y=mean, group=paste0(type,method), color=method)) + 
+  geom_line(size=1, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=1) + 
+  geom_hline(yintercept=0.5, linetype="dotted", color = "black", size=1) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_grid(classify~depth_name) +
+  labs(y='AUC-ROC error', x='Percent of missing time points') + 
+  ggtitle("Subject Level") +
+  scale_color_manual(values=color_method) +
+  theme_bw()
+p_subj_roc
+
+
+ann_text <- tab_auc_subj_summary[2,]
+ann_text$mean <- 1-mean(metauni$study_group=="EEN") - 0.015
+ann_text$pm <- 6
+p_subj_pr <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="PR"), 
+                           aes(x=pm, y=mean, group=paste0(type,method), color=method)) + 
+  geom_line(size=1, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=1) + 
+  geom_hline(yintercept=1-mean(metauni$study_group=="EEN"), linetype="dotted", color = "black", size=1) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_grid(classify~depth_name) +
+  labs(y='AUC-PR error', x='Percent of missing time points') + 
+  ggtitle("Subject Level") +
+  scale_color_manual(values=color_method) +
+  theme_bw()
+p_subj_pr
+```
+
+### Smallest of the two classification methods
+
+```{r smallest_rf_glm}
+color_method <- c('#33a02c', #green for CTF
+                  '#0096FF', #blue for microTensor
+                  '#5A5A5A') #gray for TEMPTED
+
+ann_text <- tab_auc_subj_summary[2,]
+ann_text$mean <- 0.515
+ann_text$pm <- 6
+p_subj_roc_best <- ggplot(data=dplyr::filter(tab_auc_subj_best_summary, measure=="ROC"), 
+                           aes(x=pm, y=mean, group=paste0(type,method), color=method)) + 
+  geom_line(size=1, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=1) + 
+  geom_hline(yintercept=0.5, linetype="dotted", color = "black", size=1) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_wrap(.~depth_name) +
+  labs(y='AUC-ROC error', x='Percent of missing time points') + 
+  ggtitle("Subject Level") +
+  scale_color_manual(values=color_method) +
+  theme_bw() + 
+  theme(legend.position="none")
+p_subj_roc_best
+
+
+ann_text <- tab_auc_subj_summary[2,]
+ann_text$mean <- 1-mean(metauni$study_group=="EEN")-0.015
+ann_text$pm <- 6
+p_subj_pr_best <- ggplot(data=dplyr::filter(tab_auc_subj_best_summary, measure=="PR"), 
+                           aes(x=pm, y=mean, group=paste0(type,method), color=method)) + 
+  geom_line(size=1, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=1) + 
+  geom_hline(yintercept=1-mean(metauni$study_group=="EEN"), linetype="dotted", color = "black", size=1) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_wrap(.~depth_name) +
+  labs(y='AUC-PR error', x='Percent of missing time points') + 
+  ggtitle("Subject Level") +
+  scale_color_manual(values=color_method) +
+  theme_bw() + 
+  theme(legend.position="none")
+p_subj_pr_best
+```
+
+
+## Print plot for manuscript
+
+```{r plot_all}
+ggsave('../figure_table/realsim_farmm.pdf', width=10, height=4, plot=p_subj_pr_best)
+```
+
+# Reconstruction error
+
+Run dimension reduction for sequencing depth=500K and percent of missingness=20\%. Reconstruct for rank ranging from 1 to 10.
+
+## TEMPTED
+
+
+```{r reconstruction_setting}
+# Function to reconstruct tensor from tempted
+reconstruct <- function(res_tempted, res_svd=NULL, datlist=NULL, r_reconstruct = NULL){
+  n <- max(length(res_svd$datlist), length(datlist))
+  if (n==0) {
+    stop("One of res_svd or datlist needs to be feeded.")
+  }
+  datlist_est <- vector(mode='list', length=n)
+  
+  r <- length(res_tempted$Lambda)
+  if (r < r_reconstruct){
+    r_reconstruct <- min(r, r_reconstruct)
+    print("r_reconstruct is larger than the fitted rank. Used the available ranks instead.")
+  }
+  
+  rec1 <- lapply(seq(1, r_reconstruct), function(s) {
+    res_tempted$Lambda[s] * res_tempted$A_hat[, s] %o% res_tempted$B_hat[, s] %o% res_tempted$Phi[, s]
+  })
+  Yhat <- Reduce("+", rec1)
+  
+  if (!is.null(res_svd)){
+    rec2 <- lapply(seq(1, length(res_svd$lambda_tilde)), function(s) {
+      res_svd$lambda_tilde[s] * res_svd$A_tilde[, s] %o% res_svd$B_tilde[, s]
+    })
+    Ymean <- Reduce("+", rec2)
+    for (ii in 1:n){
+      datlist_est[[ii]] <- res_svd$datlist[[ii]]
+      ti <- 1 + round((length(res_tempted$time_Phi)-1) * (res_svd$datlist[[ii]][1,] - res_tempted$time_Phi[1]) / (tail(res_tempted$time_Phi,1) - res_tempted$time_Phi[1]))
+      datlist_est[[ii]][-1,] <- Yhat[ii,,ti] + Ymean[ii,]
+    }
+  }else{
+    for (ii in 1:n){
+      datlist_est[[ii]] <- datlist[[ii]]
+      ti <- 1 + round((length(res_tempted$time_Phi)-1) * (datlist[[ii]][1,] - res_tempted$time_Phi[1]) / (tail(res_tempted$time_Phi,1) - res_tempted$time_Phi[1]))
+      datlist_est[[ii]][-1,] <- Yhat[ii,,ti]
+    }
+  }
+  return(datlist_est)
+}
+```
+
+
+
+```{r reconstruct_tempted, eval=FALSE}
+depth <- c(5e4, 1e5, 5e5)
+pmiss <- seq(from=20,to=50,by=5)
+nsim <- 100
+
+rmax <- 10
+R2_tempted_mean <- R2_tempted_nomean <- matrix(0, nsim, rmax)
+
+for (ss in 1:nsim){
+  print(ss)
+  jj <- 1
+  kk <- 3
+  dat_sub <- read.csv(paste0("simdata/realsim", ss, "_pmiss", pmiss[jj], "_depth", depth[kk]/1000, "K.csv"), header=T, row.names=1)
+  count_sub <- dat_sub[,-c(1:3)]
+  meta_sub <- dat_sub[,1:3]
+  meta_sub$SubjectID <- as.character(meta_sub$SubjectID)
+  subdata <- format_tempted(count_sub, meta_sub$study_day, meta_sub$SubjectID, 
+                          threshold=1, pseudo=0.5,
+                          transform="clr")
+  vec_obs <- unlist(sapply(subdata, function(x){x[-1,]}))
+  # with mean subtraction
+  svd_sub <- svd_centralize(subdata)
+  res_tempted_mean <- tempted(svd_sub$datlist, r = rmax, 
+                              resolution = 51, smooth=0.0001)
+  for (r in 1:rmax){
+    subdata_est_mean <- reconstruct(res_tempted_mean, svd_sub, r_reconstruct=r)
+    vec_est_mean <- unlist(sapply(subdata_est_mean, function(x){x[-1,]}))
+    R2_tempted_mean[ss,r] <- 1-sum((vec_est_mean-vec_obs)^2)/sum(vec_obs^2)
+  }
+  # without mean subtraction
+  res_tempted_nomean <- tempted(subdata, r = rmax, 
+                                resolution = 51, smooth=0.0001)
+  for (r in 1:rmax){
+    subdata_est_nomean <- reconstruct(res_tempted_nomean, res_svd=NULL, datlist=subdata, r_reconstruct=r)
+    vec_est_nomean <- unlist(sapply(subdata_est_nomean, function(x){x[-1,]}))
+    R2_tempted_nomean[ss,r] <- 1-sum((vec_est_nomean-vec_obs)^2)/sum(vec_obs^2)
+  }
+  if (ss%%10==0){
+    write.csv(R2_tempted_nomean, file=paste0("result/farmm_reconstruction_tempted_nomean_pmiss", pmiss[jj], ".csv"))
+    write.csv(R2_tempted_mean, file=paste0("result/farmm_reconstruction_tempted_mean_pmiss", pmiss[jj], ".csv"))
+  }
+}
+```
+
+
+## CTF
+
+```{r reconstruct_ctf, eval=FALSE}
+py_run_file(file="run_farmm_ctf_reconstruct.py",convert=F)
+```
+
+
+## Summarize result and make plot
+
+```{r reconstruct_summary}
+fname <- c("ctf_nomean", "tempted_nomean", "tempted_mean")
+tab_R2 <- NULL
+for (ii in 1:length(fname)){
+  R2_csv <- read.csv(paste0("result/farmm_reconstruction_", fname[ii], "_pmiss20.csv"), header=T, row.names = 1)
+  mthd <- toupper(strsplit(fname[ii], "_")[[1]][1])
+  mean_subtract <- ifelse(strsplit(fname[ii], "_")[[1]][2]=="mean", "Yes", "No")
+  if(is.na(mean_subtract)) mean_subtract <- "No"
+  tab_R2_tmp <- tidyr::pivot_longer(R2_csv, cols=1:10, names_to="rank") %>%
+    mutate(method=mthd, 
+           mean_subtract=mean_subtract, 
+           rank=as.numeric(substr(rank, 2, 4)))
+  tab_R2 <- rbind(tab_R2, tab_R2_tmp)
+}
+
+tab1 <- aggregate(value~rank+method+mean_subtract, data=tab_R2, 
+                  FUN=mean)
+names(tab1)[4] <- "mean"
+tab2 <- aggregate(value~rank+method+mean_subtract, data=tab_R2, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[4] <- "se"
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_R2_summary <- merge(tab1, tab2)
+tab_R2_summary$mean_subtract <- factor(tab_R2_summary$mean_subtract, levels=c("Yes", "No"))
+tab_R2_summary <- tab_R2_summary %>%
+  mutate(normalization = ifelse(method=="CTF", "rclr", "clr"), wd=0.5)
+```
+
+
+```{r reconstruct_plot}
+color_method <- c("#33a02c", #green for CTF
+                  "#5A5A5A") #gray for TEMPTED  
+p_R2_summary <- ggplot(data=tab_R2_summary, 
+                                aes(x=rank, y=1-mean, group=interaction(method, mean_subtract), color=method, linetype=mean_subtract)) + 
+  geom_line(size=1, position=position_dodge(0.1)) + geom_point(size=2, position=position_dodge(0.1)) +
+  geom_errorbar(aes(ymin=1-mean-2*se, ymax=1-mean+2*se, width=wd), 
+                #position=position_dodge(0.1), 
+                size=1) + 
+  theme_bw() + 
+  scale_x_continuous(breaks=1:10) + 
+  scale_color_manual(values=color_method) +
+  facet_wrap(~ normalization, scales = "free_y") +
+  theme(strip.background = element_blank(),
+  strip.text.x = element_blank()) +
+  labs(y="Tensor Reconstruction Error", 
+       x="Number of Components",
+       color="Method",
+       linetype="Mean Subtraction") + 
+  theme(legend.position = "bottom")
+
+p_R2_summary
+
+
+pdf("../figure_table/reconstruction_farmm.pdf", width=5.5, height=5)
+print(p_R2_summary)
+dev.off()
+```
+
+
+# TEMPTED without mean subtraction
+
+## Run TEMPTED
+
+Save subject loading and trajectory
+
+```{r run_tempted_nomean, eval=FALSE}
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(pmiss)){
+    for (kk in 1:length(depth)){
+      dat_sub <- read.csv(paste0("simdata/realsim", ss, "_pmiss", pmiss[jj], "_depth", depth[kk]/1000, "K.csv"), header=T, row.names=1)
+      count_sub <- dat_sub[,-c(1:3)]
+      meta_sub <- dat_sub[,1:3]
+      meta_sub$SubjectID <- as.character(meta_sub$SubjectID)
+      subdata <- format_tempted(count_sub, meta_sub$study_day, meta_sub$SubjectID, 
+                              threshold=1, pseudo=0.5,
+                              transform="clr")
+      # run tempted with all subjects
+      res_tempted <- tempted(subdata, r = 3, resolution = 51, smooth=0.0001)
+      # plot_time_loading(res_tempted)
+      agg_feat <- aggregate_feature(res_tempted, NULL, subdata)
+      aggfeat_mat <- reshape(agg_feat$metafeature_aggregate[,1:4],
+                             idvar=c("subID","timepoint") ,
+                             v.names=c("value"), timevar="PC",
+                             direction="wide")
+      colnames(aggfeat_mat)[1] <- 'SubjectID'
+      aggfeat_mat <- merge(aggfeat_mat, metauni, by='SubjectID')
+      aggfeat_mat[,2+1:3] <- apply(aggfeat_mat[,2+1:3], 2, scale)
+      tempted_sub <- as.data.frame(res_tempted$A_hat)
+      tempted_sub$SubjectID <- rownames(tempted_sub)
+      tempted_sub <- merge(metauni, tempted_sub)
+      write.csv(aggfeat_mat, 
+                file=paste0('simresult_tempted/tempted_traj_sim',ss,'_pmiss',pmiss[jj], "_depth", depth[kk]/1000, 'K_nomean3.csv'))
+      write.csv(tempted_sub, 
+                file=paste0('simresult_tempted/tempted_subj_sim',ss,'_pmiss',pmiss[jj], "_depth", depth[kk]/1000, 'K_nomean3.csv'))
+    }
+  }
+}
+```
+
+## In-sample ROC & PR
+
+-   Random forest
+-   Logistic regression
+
+```{r tempted_subj_insample_auc_nomean, eval=FALSE}
+for (npc in c(2:3)){
+  for (kk in 1:length(depth)){
+    roc_sub_rf_tempted <- matrix(NA, nsim, length(pmiss))
+    colnames(roc_sub_rf_tempted) <- paste0("pmiss", pmiss)
+    pr_sub_glm_tempted <- pr_sub_rf_tempted <- 
+      roc_sub_glm_tempted <- roc_sub_rf_tempted
+    fmlr <- paste("ind_een ~", paste0("PC", 1:npc, collapse="+"))
+    fmlr2 <- paste("fac_een ~", paste0("PC", 1:npc, collapse="+"))
+    for (jj in 1:length(pmiss)){
+      print(jj)
+      for (ss in 1:nsim){
+        fname <- paste0('tempted_subj_sim',ss,'_pmiss',pmiss[jj], '_depth', depth[kk]/1000, 'K_nomean3.csv')
+        tempted_sub <- read.csv(file.path("simresult_tempted", fname), row.names=1)
+        tempted_sub$ind_een <- tempted_sub$study_group=="EEN"
+        tempted_sub$fac_een <- as.factor(tempted_sub$ind_een)
+        # random forest
+        rf_fit <- randomForest(as.formula(fmlr2),
+                       data = tempted_sub)
+        predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+        ind_een <- tempted_sub$ind_een
+        roc_sub_rf_tempted[ss,jj] <- roc.curve(predprob_rf[ind_een], 
+                                     predprob_rf[!ind_een])$auc
+        pr_sub_rf_tempted[ss,jj] <- pr.curve(predprob_rf[ind_een], 
+                                     predprob_rf[!ind_een])$auc.integral
+        # logistic regression
+        glm_fit <- glm(as.formula(fmlr), 
+                      family = binomial(link="logit"),
+                      data = tempted_sub)
+        predprob_glm <- predict(glm_fit, type = "response")
+        ind_een <- tempted_sub$ind_een
+        roc_sub_glm_tempted[ss,jj] <- roc.curve(predprob_glm[ind_een], 
+                                          predprob_glm[!ind_een])$auc
+        pr_sub_glm_tempted[ss,jj] <- pr.curve(predprob_glm[ind_een], 
+                                          predprob_glm[!ind_een])$auc.integral
+      }
+    }
+    write.csv(roc_sub_rf_tempted, 
+              file=paste0('result/realsim_farmm_roc_sub_rf_tempted_nomean', 
+                          npc, '_', depth[kk]/1000, 'K.csv'))
+    write.csv(roc_sub_glm_tempted, 
+              file=paste0('result/realsim_farmm_roc_sub_glm_tempted_nomean',
+                          npc, '_', depth[kk]/1000, 'K.csv'))
+    write.csv(pr_sub_rf_tempted, 
+              file=paste0('result/realsim_farmm_pr_sub_rf_tempted_nomean', 
+                          npc, '_', depth[kk]/1000, 'K.csv'))
+    write.csv(pr_sub_glm_tempted, 
+              file=paste0('result/realsim_farmm_pr_sub_glm_tempted_nomean', 
+                          npc, '_', depth[kk]/1000, 'K.csv'))
+  }
+}
+
+```
+
+## Out-of-Sample 
+
+-   Random forest
+-   Logistic regression
+
+```{r run_oos_nomean, eval=FALSE}
+for (kk in 1:length(depth)){
+  roc_glm_oos <- matrix(NA, nsim, length(pmiss))
+  colnames(roc_glm_oos) <- paste0("pmiss", pmiss)
+  pr_rf_oos <- pr_glm_oos <- roc_rf_oos <- roc_glm_oos
+  pr_rf_oos2 <- pr_glm_oos2 <- roc_rf_oos2 <- roc_glm_oos2 <- roc_glm_oos
+  for (jj in 1:length(pmiss)){
+    print(jj)
+    for (ss in 1:nsim){
+      dat_sub <- read.csv(paste0("simdata/realsim", ss, "_pmiss", pmiss[jj], "_depth", depth[kk]/1000, "K.csv"), header=T, row.names=1)
+      count_sub <- dat_sub[,-c(1:3)]
+      meta_sub <- dat_sub[,1:3]
+      meta_sub$SubjectID <- as.character(meta_sub$SubjectID)
+      subdata <- format_tempted(count_sub, meta_sub$study_day, meta_sub$SubjectID, 
+                              threshold=1, pseudo=0.5,
+                              transform="clr")
+      metauni_sub <- unique(meta_sub[,c("SubjectID", "study_group")])
+      metauni_sub$ind_een <- metauni_sub$study_group=="EEN"
+      # leave one out prediction
+      predprob_glm <- predprob_rf <- predprob_glm2 <- predprob_rf2 <- rep(NA, length(subdata))
+      
+      for (ii in 1:length(subdata)){
+        print(ii)
+        res_train <- tempted(subdata[-ii], r = npc, resolution = 51, smooth=0.0001)
+        A_test <- est_test_subject(subdata[ii], res_train, mean_svd=NULL)
+        dftrain <- data.frame(y=metauni_sub[-ii,'ind_een'], x=res_train$A)
+        dftest <- data.frame(y=metauni_sub[ii,'ind_een'], x=A_test)
+        # logistic regression
+        glm_fit <- glm(y ~ ., data = dftrain, family = "binomial")
+        predprob_glm[ii] <- predict(glm_fit, newdata=dftest, type = "response")
+        glm_fit2 <- glm(y ~ x.PC1 + x.PC2, data = dftrain, family = "binomial")
+        predprob_glm2[ii] <- predict(glm_fit2, newdata=dftest, type = "response")
+        # random forest
+        rf_fit <- randomForest(as.factor(y) ~ ., data = dftrain)
+        predprob_rf[ii] <- predict(rf_fit, newdata=dftest, type = "prob")[,"TRUE"]
+        rf_fit2 <- randomForest(as.factor(y) ~ x.PC1+x.PC2, data = dftrain)
+        predprob_rf2[ii] <- predict(rf_fit2, newdata=dftest, type = "prob")[,"TRUE"]
+      }
+      roc_rf_oos[ss,jj] <- roc.curve(predprob_rf[metauni_sub$ind_een], 
+                                          predprob_rf[!metauni_sub$ind_een])$auc
+      roc_glm_oos[ss,jj] <- roc.curve(predprob_glm[metauni_sub$ind_een], 
+                                          predprob_glm[!metauni_sub$ind_een])$auc
+      pr_rf_oos[ss,jj] <- pr.curve(predprob_rf[metauni_sub$ind_een], 
+                                          predprob_rf[!metauni_sub$ind_een])$auc.integral
+      pr_glm_oos[ss,jj] <- pr.curve(predprob_glm[metauni_sub$ind_een], 
+                                          predprob_glm[!metauni_sub$ind_een])$auc.integral
+      roc_rf_oos2[ss,jj] <- roc.curve(predprob_rf2[metauni_sub$ind_een], 
+                                          predprob_rf2[!metauni_sub$ind_een])$auc
+      roc_glm_oos2[ss,jj] <- roc.curve(predprob_glm2[metauni_sub$ind_een], 
+                                          predprob_glm2[!metauni_sub$ind_een])$auc
+      pr_rf_oos2[ss,jj] <- pr.curve(predprob_rf2[metauni_sub$ind_een], 
+                                          predprob_rf2[!metauni_sub$ind_een])$auc.integral
+      pr_glm_oos2[ss,jj] <- pr.curve(predprob_glm2[metauni_sub$ind_een], 
+                                          predprob_glm2[!metauni_sub$ind_een])$auc.integral
+    }
+    write.csv(roc_rf_oos, file=paste0("result/realsim_farmm_roc_oos_rf_tempted_nomean3_", 
+                                      depth[kk]/1000, "K.csv"))
+    write.csv(roc_glm_oos, file=paste0("result/realsim_farmm_roc_oos_glm_tempted_nomean3_",
+                                       depth[kk]/1000, "K.csv"))
+    write.csv(pr_rf_oos, file=paste0("result/realsim_farmm_pr_oos_rf_tempted_nomean3_", 
+                                     depth[kk]/1000, "K.csv"))
+    write.csv(pr_glm_oos, file=paste0("result/realsim_farmm_pr_oos_glm_tempted_nomean3_", 
+                                      depth[kk]/1000, "K.csv"))
+    
+    write.csv(roc_rf_oos2, file=paste0("result/realsim_farmm_roc_oos_rf_tempted_nomean2_", 
+                                      depth[kk]/1000, "K.csv"))
+    write.csv(roc_glm_oos2, file=paste0("result/realsim_farmm_roc_oos_glm_tempted_nomean2_",
+                                       depth[kk]/1000, "K.csv"))
+    write.csv(pr_rf_oos2, file=paste0("result/realsim_farmm_pr_oos_rf_tempted_nomean2_", 
+                                     depth[kk]/1000, "K.csv"))
+    write.csv(pr_glm_oos2, file=paste0("result/realsim_farmm_pr_oos_glm_tempted_nomean2_", 
+                                      depth[kk]/1000, "K.csv"))
+  }
+}
+
+```
+
+## Make plots
+
+### Subject-level ROC and PR
+
+```{r summary_sub_classification_nomean}
+method  <- c("tempted", "tempted_nomean2", "tempted_nomean3")
+measure <- c("roc", "pr")
+classify <- c("rf", "glm")
+
+tab_auc_subj <- NULL
+
+for (ms in measure){
+  for (cls in classify){ 
+    # in sample
+    for (mthd in method){
+      for (kk in 1:length(depth)){
+        fname <- paste0("result/realsim_farmm_", ms, "_sub_", cls, "_", mthd, "_", depth[kk]/1000, "K.csv")
+        tab0 <- read.csv(fname, row.names=1)
+        tab0 <- 1-as.matrix(tab0)
+        tab_tmp <- data.frame(sim=1:nsim,
+                        auc=as.vector(tab0),
+                        pm=as.vector(t(matrix(rep(pmiss,nsim),length(pmiss),nsim))),
+                        method=toupper(mthd), measure=toupper(ms),
+                        classify=cls,
+                        type="In-Sample", depth=depth[kk])
+        tab_auc_subj <- rbind(tab_auc_subj, tab_tmp)
+        # out of sample
+        fname <- paste0("result/realsim_farmm_", ms, "_oos_", cls, "_", mthd, "_", depth[kk]/1000, "K.csv")
+        tab0 <- read.csv(fname, row.names=1)
+        tab0 <- 1-as.matrix(tab0)
+        tab_tmp <- data.frame(sim=1:nsim,
+                              auc=as.vector(tab0),
+                        pm=as.vector(t(matrix(rep(pmiss,nsim),length(pmiss),nsim))),
+                        method=toupper(mthd), measure=toupper(ms), classify=cls,
+                        type="Out-of-Sample", depth=depth[kk])
+        tab_auc_subj <- rbind(tab_auc_subj, tab_tmp)
+      }
+    }
+  }  
+}
+tab_auc_subj$classify <- gsub("rf", "Random Forest", tab_auc_subj$classify)
+tab_auc_subj$classify <- gsub("glm", "Logistic Regression", tab_auc_subj$classify)
+tab_auc_subj$method <- gsub("TEMPTED", "TEMPTED", tab_auc_subj$method)
+tab_auc_subj$depth_name <- paste0("Reads per Sample = ", 
+                                  tab_auc_subj$depth/1000, "K")
+tab_auc_subj$depth_name <- factor(tab_auc_subj$depth_name, 
+                                     levels=paste0("Reads per Sample = ", 
+                                  depth/1000, "K"))
+
+# summarize mean and error band for each method
+tab_auc_subj$pm <- as.factor(tab_auc_subj$pm)
+tab1 <- aggregate(auc~pm+measure+method+classify+type+depth_name, data=tab_auc_subj, 
+                  FUN=mean)
+names(tab1)[7] <- 'mean'
+tab2 <- aggregate(auc~pm+measure+method+classify+type+depth_name, data=tab_auc_subj, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[7] <- 'se'
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_auc_subj_summary <- merge(tab1, tab2)
+tab_auc_subj_summary$pm <- factor(tab_auc_subj_summary$pm, 
+                                     level=as.character(pmiss))
+
+
+# get the best AUC of the two methods
+tab_auc_subj_best <- aggregate(auc~sim+pm+measure+method+type+depth_name, data=tab_auc_subj, 
+                  FUN=min)
+
+# summarize mean and error band for the best of two methods
+tab_auc_subj_best$pm <- as.factor(tab_auc_subj_best$pm)
+tab1 <- aggregate(auc~pm+measure+method+type+depth_name, data=tab_auc_subj_best, 
+                  FUN=mean)
+names(tab1)[6] <- 'mean'
+tab2 <- aggregate(auc~pm+measure+method+type+depth_name, data=tab_auc_subj_best, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[6] <- 'se'
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_auc_subj_best_summary <- merge(tab1, tab2)
+tab_auc_subj_best_summary$pm <- factor(tab_auc_subj_best_summary$pm, 
+                                     level=as.character(pmiss))
+```
+
+### Plot all subject-level AUC-ROC error
+
+Logistic regression and random forest separately
+
+```{r plot_sub_auc_nomean}
+color_method <- c("black", # for tempted
+                  "blue", # dark blue for rank=2
+                  "red") # dark red for rank=3 
+
+ann_text <- tab_auc_subj_summary[2,]
+ann_text$mean <- 0.5 - 0.015
+ann_text$pm <- 6
+p_subj_roc <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="ROC"), 
+                           aes(x=pm, y=mean, group=paste0(type,method), color=method)) + 
+  geom_line(size=1, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=1) + 
+  geom_hline(yintercept=0.5, linetype="dotted", color = "black", size=1) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_grid(classify~depth_name) +
+  labs(y='AUC-ROC error', x='Percent of missing time points') + 
+  ggtitle("Subject Level") +
+  scale_color_manual(values=color_method) +
+  theme_bw()
+p_subj_roc
+
+
+ann_text <- tab_auc_subj_summary[2,]
+ann_text$mean <- 1-mean(metauni$study_group=="EEN") - 0.015
+ann_text$pm <- 6
+p_subj_pr <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="PR"), 
+                           aes(x=pm, y=mean, group=paste0(type,method), color=method)) + 
+  geom_line(size=1, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=1) + 
+  geom_hline(yintercept=1-mean(metauni$study_group=="EEN"), linetype="dotted", color = "black", size=1) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_grid(classify~depth_name) +
+  labs(y='AUC-PR error', x='Percent of missing time points') + 
+  ggtitle("Subject Level") +
+  scale_color_manual(values=color_method) +
+  theme_bw()
+p_subj_pr
+```
+
+Smallest of the two classification methods
+
+```{r smallest_rf_glm_nomean}
+color_method <- c("black", # for tempted
+                  "blue", # dark blue for rank=2
+                  "red") # dark red for rank=3 
+
+ann_text <- tab_auc_subj_summary[2,]
+ann_text$mean <- 0.515
+ann_text$pm <- 6
+p_subj_roc_best <- ggplot(data=dplyr::filter(tab_auc_subj_best_summary, measure=="ROC"), 
+                           aes(x=pm, y=mean, group=paste0(type,method), color=method)) + 
+  geom_line(size=1, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=1) + 
+  geom_hline(yintercept=0.5, linetype="dotted", color = "black", size=1) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_wrap(.~depth_name) +
+  labs(y='AUC-ROC error', x='Percent of missing time points') + 
+  ggtitle("Subject Level") +
+  scale_color_manual(values=color_method) +
+  theme_bw() + 
+  theme(legend.position="none")
+p_subj_roc_best
+
+
+ann_text <- tab_auc_subj_summary[2,]
+ann_text$mean <- 1-mean(metauni$study_group=="EEN")-0.015
+ann_text$pm <- 6
+p_subj_pr_best <- ggplot(data=dplyr::filter(tab_auc_subj_best_summary, measure=="PR"), 
+                           aes(x=pm, y=mean, group=paste0(type,method), color=method)) + 
+  geom_line(size=1, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=1) + 
+  geom_hline(yintercept=1-mean(metauni$study_group=="EEN"), linetype="dotted", color = "black", size=1) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_wrap(.~depth_name) +
+  labs(y='AUC-PR error', x='Percent of missing time points') + 
+  ggtitle("Subject Level") +
+  scale_color_manual(values=color_method) +
+  theme_bw() + 
+  theme(legend.position="none")
+p_subj_pr_best
+```
+
+
+### Print plot for manuscript
+
+```{r plot_all_nomean}
+ggsave('../figure_table/realsim_farmm_nomean.pdf', width=10, height=4, plot=p_subj_pr_best)
+```
+
+

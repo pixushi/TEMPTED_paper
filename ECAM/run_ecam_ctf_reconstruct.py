@@ -151,31 +151,6 @@ for ss in range(nsim):
     # Reading the metadata, setting the first column as the index
     meta_sub = pd.read_csv(f"/Users/pixushi/Box/0-ftsvd/TEMPTED_paper/ECAM/simdata/realsim{ss+1}_ntime9.csv", header=0, index_col=0)
     meta_sub['studyid'] = 'id_' + meta_sub['studyid'].astype('str')
-    meta_sub['delivery_ind'] = meta_sub['delivery'] == 'Vaginal'
-    meta_sub = meta_sub[['visit', 'studyid']]
-    meta_sub['visit'] = meta_sub['visit'].astype('int')
-    #meta_sub.index.name = '#SampleID'
-
-    count_sub = count_tab.loc[meta_sub.index]
-    # Filtering columns in count_sub where <= 95% of entries are zero
-    count_sub = count_sub.loc[:, (count_sub == 0).mean() <= 0.95]
-
-    table_sub = Table(count_sub.T.values, count_sub.columns, count_sub.index)
-
-    for ii in range(rmax):
-        T, T_hat = reconstruction_helper(table_sub.copy(),
-                                                   meta_sub.reindex(table_sub.ids()),
-                                                   subject_label, state_label,
-                                                   n_components=ii+1)
-        err.iloc[ss,ii] = 1 - (norm(T - T_hat)**2) / (norm(T_hat) ** 2)
-    if ss % 10 == 9:
-        err.to_csv("/Users/pixushi/Box/0-ftsvd/TEMPTED_paper/ECAM/result/ecam_reconstruction_ctf_nomean_ntime2.csv", index=True)
-for ss in range(nsim):
-    print(ss)
-    # Reading the metadata, setting the first column as the index
-    meta_sub = pd.read_csv(f"/Users/pixushi/Box/0-ftsvd/TEMPTED_paper/ECAM/simdata/realsim{ss+1}_ntime9.csv", header=0, index_col=0)
-    meta_sub['studyid'] = 'id_' + meta_sub['studyid'].astype('str')
-    meta_sub['delivery_ind'] = meta_sub['delivery'] == 'Vaginal'
     meta_sub = meta_sub[['visit', 'studyid']]
     meta_sub['visit'] = meta_sub['visit'].astype('int')
 

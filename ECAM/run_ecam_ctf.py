@@ -12,6 +12,7 @@ from qiime2.plugins.gemelli.actions import ctf
 npc = int(r.npc)
 ss = str(int(r.ss))
 jj = str(int(r.ntime))
+outdir = str(r.outdir) 
 # obtain meta data and otu table
 meta_table = r.meta_sub
 meta_table['visit'] = meta_table['visit'].astype('int')
@@ -38,4 +39,4 @@ ctf_results  = ctf(otu_q2, meta_q2,
 # save results
 for id_, art_ in ctf_results.__dict__.items():
     if id_ != '_fields' and ('subject_biplot' in id_ or 'distance' in id_) :
-        art_.save(os.path.join('simresult_ctf',id_.replace('_', '-')+'_sim'+ss+'_ntime'+jj))
+        art_.save(os.path.join(outdir, id_.replace('_', '-')+'_sim'+ss+'_ntime'+jj))

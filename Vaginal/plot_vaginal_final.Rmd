@@ -133,7 +133,7 @@ p_sub_box
 
 
 lay <- matrix(c(1,1,2,2,2,2,3,3,3),1,)
-pdf('../figure_table/vaginal_plot.pdf', width=16, height=3.5)
+pdf('../figure_table/vaginal_plot.pdf', width=12, height=3.5)
 grid.arrange(p_sub_box, p_bar, p_feat_ratio_summary, layout_matrix=lay)
 dev.off()
 

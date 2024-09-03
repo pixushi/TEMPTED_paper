@@ -1,0 +1,2706 @@
+---
+title: "Simulation Based on ECAM Data for More Methods"
+author: "Pixu Shi"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+# Preparation
+
+## Library
+
+```{r}
+reticulate::use_condaenv("/Users/pixushi/miniconda3/envs/qiime2-2021.2")
+rm(list=ls())
+# for computing
+library(reticulate) # run py codes
+library(vegan) # distance matrix
+library(PERMANOVA) # permanova
+library(randomForest) # random forest
+library(PRROC) # roc and pr
+library(tempted)
+library(microTensor)
+
+# for data
+library(qiime2R) # read in Qiime artifacts
+library(dplyr) # data formatting
+
+# for plotting
+library(ggpubr)
+library(ggplot2)
+library(gridExtra)
+library(RColorBrewer)
+
+# set working directory to be where the current script is located
+mydir <- dirname(rstudioapi::getSourceEditorContext()$path)
+setwd(mydir)
+color_RB <- brewer.pal(3,"Set1")[1:2]
+```
+
+## Read in the data
+
+```{r read_data}
+count_tab <- read.csv("data/otu_count_cleaned_q2.csv", row.names=1)
+meta_tab <- read.csv("data/otu_metadata_cleaned_q2.csv", row.names=1)
+taxon_tab <- read.csv("data/otu_taxonomy_cleaned_q2.csv", row.name=1)
+table(rownames(count_tab)==rownames(meta_tab))
+meta_tab$delivery_ind <- meta_tab$delivery=="Vaginal"
+# remove distal gut samples
+meta_tab <- meta_tab %>%
+  dplyr::filter(qiita_empo_3=="anthropogenic sample" | is.na(qiita_empo_3))
+# remove subject with <9 samples
+sub_rm <- names(which(table(meta_tab$studyid)<9))
+meta_tab <- meta_tab %>%
+  dplyr::filter(!studyid %in% sub_rm)
+table(meta_tab$studyid)
+count_tab <- count_tab[rownames(meta_tab),]
+table(rownames(count_tab)==rownames(meta_tab))
+metauni <- unique(meta_tab[,c("studyid", "delivery_ind", "diet")])
+rownames(metauni) <- metauni$studyid
+```
+
+## Plot timeline of study
+
+```{r timeline}
+meta_reordered <- meta_tab[order(meta_tab$delivery, meta_tab$studyid, decreasing=T),]
+meta_reordered$studyid <- factor(meta_reordered$studyid, 
+                                 unique(meta_reordered$studyid))
+colnames(meta_reordered)[10] <- "Delivery"
+p_timeline <- ggplot(data=meta_reordered, 
+       aes(x=day_of_life, y=studyid, 
+           group=studyid, color=Delivery, shape=Delivery)) +
+  geom_line() + geom_point() + scale_color_manual(values=color_RB) +
+  labs(y="Host ID", x="Day of Life") + 
+  theme_bw() +
+  theme(legend.position="bottom")
+p_timeline
+pdf("../figure_table/ECAM_timeline.pdf", width=7.7, height=5)
+print(p_timeline)
+dev.off()
+```
+
+## Plot time loading of the whole dataset
+
+```{r time_loading}
+subdata <- format_tempted(count_tab, meta_tab$day_of_life, meta_tab$studyid, 
+                        threshold=0.95, pseudo=0.5,
+                        transform="clr")
+# run tempted with all subjects and run permanova test
+svd_sub <- svd_centralize(subdata)
+
+res_tempted_mean <- tempted(svd_sub$datlist, r = 3, resolution = 101, smooth=1e-4)
+res_tempted_nomean <- tempted(subdata, r = 3, resolution = 101, smooth=1e-4)
+plot_time_loading(res_tempted_mean) + theme_bw()
+plot_time_loading(res_tempted_nomean) + theme_bw()
+```
+
+
+# Simulated data by resampling ECAM samples
+
+```{r setup}
+nkeep <- c(2,3,4,5,6,7,8,9)
+nsim <- 100
+npc <- 2
+```
+
+
+```{r simulate_data, eval=FALSE}
+meta_tab2 <- meta_tab[,c("day_of_life", "studyid", "delivery")]
+set.seed(0)
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    sampleID_temp <- NULL
+    visit <- NULL
+    for (i in 1:nrow(metauni)){
+      meta_sub <- dplyr::filter(meta_tab, studyid==metauni$studyid[i])
+      meta_sub <- dplyr::arrange(meta_sub, -day_of_life)
+      meta_sub <- meta_sub[!duplicated(meta_sub$day_of_life),]
+      meta_sub <- dplyr::arrange(meta_sub, day_of_life)
+      nsample1 <- sum(meta_sub$day_of_life<=365)
+      nsample2 <- sum(meta_sub$day_of_life>365)
+      prob_vec <- c(rep(1,nsample1), rep(2,nsample2))
+      prob_vec <- prob_vec/sum(prob_vec)
+      sel <- sample(rownames(meta_sub), 
+                    size=min(nsample1+nsample2, nkeep[jj]),
+                    prob=prob_vec)
+      sel <- sel[order(meta_sub[sel,"day_of_life"])]
+      sampleID_temp <- c(sampleID_temp, sel)
+      visit_tmp <- 1:nkeep[jj]
+      visit <- c(visit, visit_tmp)
+    }
+    meta_sub <- meta_tab2[sampleID_temp,]
+    meta_sub$visit <- visit
+    write.csv(meta_sub, file=paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"))
+  }
+}
+```
+
+
+# TEMPTED
+
+## Run TEMPTED
+
+Save subject loading and trajectory
+
+```{r run_tempted, eval=FALSE}
+smooth <- c(1, 0.1, 0.01, 0.005, rep(1e-4, 5))
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    count_sub <- count_tab[rownames(meta_sub),]
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    metauni <- unique(meta_sub[,c("studyid", "delivery_ind")])
+    subdata <- format_tempted(count_sub, meta_sub$day_of_life, meta_sub$studyid, 
+                            threshold=0.95, pseudo=0.5,
+                            transform="clr")
+    # run tempted with all subjects
+    svd_sub <- svd_centralize(subdata)
+    res_tempted <- tempted(svd_sub$datlist, r = npc, 
+                           resolution = (nkeep[jj]+16)*2, smooth=smooth[jj])
+    # sample trajectory
+    agg_feat <- aggregate_feature(res_tempted, NULL, subdata)
+    aggfeat_mat <- reshape(agg_feat$metafeature_aggregate[,1:4],
+                           idvar=c("subID","timepoint") ,
+                           v.names=c("value"), timevar="PC",
+                           direction="wide")
+    colnames(aggfeat_mat)[1] <- "studyid"
+    aggfeat_mat <- merge(aggfeat_mat, metauni, by="studyid")
+    aggfeat_mat[,2+1:npc] <- apply(aggfeat_mat[,2+1:npc], 2, scale)
+    # subject loading
+    tempted_sub <- as.data.frame(res_tempted$A_hat)
+    tempted_sub$`intercept` <- svd_sub$A_tilde
+    tempted_sub$studyid <- rownames(tempted_sub)
+    tempted_sub <- merge(metauni, tempted_sub)
+
+    write.csv(aggfeat_mat, 
+              file=paste0("simresult_tempted/tempted_traj_sim",ss,"_ntime",nkeep[jj], ".csv"))
+    write.csv(tempted_sub, 
+              file=paste0("simresult_tempted/tempted_subj_sim",ss,"_ntime",nkeep[jj], ".csv"))
+  }
+}
+```
+
+## Sample-level
+
+### PERMANOVA F-value
+
+```{r tempted_sample_Fvalue, eval=FALSE}
+method <- "tempted"
+Fmodel_tempted <- matrix(NA, nsim, length(nkeep))
+colnames(Fmodel_tempted) <- paste0("nsample", nkeep)
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    fname <- paste0(method,"_traj_sim",ss,"_ntime",nkeep[jj], ".csv")
+    aggfeat_mat <- read.csv(file.path(paste0("simresult_", method), fname), row.names=1)
+    # calculate PERMANOVA F
+    dist_aggft <- vegdist(aggfeat_mat[,2+1:npc], method="euclidean")
+    res_perm <- adonis2(dist_aggft ~ aggfeat_mat$delivery)
+    Fmodel_tempted[ss,jj] <- res_perm$F[1]
+  }
+}
+
+write.csv(Fmodel_tempted, 
+          file=paste0("result/realsim_ecam_Fvalue_", method, ".csv"))
+```
+
+## Subject-level
+
+### In-sample ROC & PR
+
+-   logistic regression
+-   random forest
+
+```{r tempted_subj_insample_auc, eval=FALSE}
+method <- "tempted"
+roc_sub_glm_tempted <- matrix(NA, nsim, length(nkeep))
+colnames(roc_sub_glm_tempted) <- paste0("nsample", nkeep)
+pr_sub_rf_tempted <- roc_sub_rf_tempted <- pr_sub_glm_tempted <- roc_sub_glm_tempted
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    fname <- paste0(method, "_subj_sim",ss,"_ntime",nkeep[jj], ".csv")
+    tempted_sub <- read.csv(file.path("simresult_tempted", fname), row.names=1)
+    # glm
+    predprob_glm <- rep(NA, nrow(tempted_sub))
+    for (ii in 1:nrow(tempted_sub)){
+      glm_fit <- glm(delivery_ind ~ PC1+PC2,
+                   data = tempted_sub[-ii,], family = "binomial")
+      predprob_glm[ii] <- predict(glm_fit, newdata=tempted_sub[ii,], type = "response")
+    }
+    roc_sub_glm_tempted[ss,jj] <- roc.curve(predprob_glm[tempted_sub$delivery_ind], 
+                                        predprob_glm[!tempted_sub$delivery_ind])$auc
+    pr_sub_glm_tempted[ss,jj] <- pr.curve(predprob_glm[tempted_sub$delivery_ind], 
+                                      predprob_glm[!tempted_sub$delivery_ind])$auc.integral
+    # random forest
+    set.seed(0)
+    rf_fit <- randomForest(as.factor(delivery_ind) ~ PC1+PC2,
+                   data = tempted_sub, strata=as.factor(delivery_ind))
+    predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+    roc_sub_rf_tempted[ss,jj] <- roc.curve(predprob_rf[tempted_sub$delivery_ind], 
+                                        predprob_rf[!tempted_sub$delivery_ind])$auc
+    pr_sub_rf_tempted[ss,jj] <- pr.curve(predprob_rf[tempted_sub$delivery_ind], 
+                              predprob_rf[!tempted_sub$delivery_ind])$auc.integral
+  }
+}
+
+write.csv(roc_sub_glm_tempted, 
+          file=paste0("result/realsim_ecam_roc_sub_glm_", method, ".csv"))
+write.csv(pr_sub_glm_tempted, 
+          file=paste0("result/realsim_ecam_pr_sub_glm_", method, ".csv"))
+write.csv(roc_sub_rf_tempted, 
+          file=paste0("result/realsim_ecam_roc_sub_rf_", method, ".csv"))
+write.csv(pr_sub_rf_tempted, 
+          file=paste0("result/realsim_ecam_pr_sub_rf_", method, ".csv"))
+```
+
+### Out-of-Sample ROC & PR
+
+-   Logistic regression
+-   Random forest
+
+```{r run_tempted_oos, eval=FALSE}
+method <- "tempted"
+roc_glm_oos_tempted <- matrix(NA, nsim, length(nkeep))
+colnames(roc_glm_oos_tempted) <- paste0("nsample", nkeep)
+pr_rf_oos_tempted <- roc_rf_oos_tempted <- 
+  pr_glm_oos_tempted <- roc_glm_oos_tempted
+smooth <- c(1, 0.1, 0.01, 0.005, rep(1e-4, 5))
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    count_sub <- count_tab[rownames(meta_sub),]
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    subdata <- format_tempted(count_sub, meta_sub$day_of_life, meta_sub$studyid, 
+                            threshold=0.95, pseudo=0.5, transform="clr")
+    metauni_sub <- unique(meta_sub[,c("studyid", "delivery_ind")])
+    # leave one out prediction
+    predprob_glm <- predprob_rf <- rep(NA, length(subdata))
+    
+    for (ii in 1:length(subdata)){
+      print(ii)
+      svd_train <- svd_centralize(subdata[-ii])
+      res_train <- tempted(svd_train$datlist, r = npc, 
+                           resolution = (nkeep[jj]+16)*2, smooth=smooth[jj])
+      A_test <- est_test_subject(subdata[ii], res_train, svd_train)
+      dftrain <- data.frame(y=metauni[-ii,"delivery_ind"], x=res_train$A)
+      dftest <- data.frame(y=metauni[ii,"delivery_ind"], x=A_test)
+      # logistic regression
+      glm_fit <- glm(y ~ ., data = dftrain, family = "binomial")
+      predprob_glm[ii] <- predict(glm_fit, newdata=dftest, type = "response")
+      # random forest
+      rf_fit <- randomForest(as.factor(y) ~ ., data = dftrain,
+                             strata=as.factor(y))
+      predprob_rf[ii] <- predict(rf_fit, newdata=dftest, type = "prob")[,"TRUE"]
+    }
+    roc_glm_oos_tempted[ss,jj] <- roc.curve(predprob_glm[metauni_sub$delivery_ind], 
+                                        predprob_glm[!metauni_sub$delivery_ind])$auc
+    pr_glm_oos_tempted[ss,jj] <- pr.curve(predprob_glm[metauni_sub$delivery_ind], 
+                                      predprob_glm[!metauni_sub$delivery_ind])$auc.integral
+    roc_rf_oos_tempted[ss,jj] <- roc.curve(predprob_rf[metauni_sub$delivery_ind], 
+                                        predprob_rf[!metauni_sub$delivery_ind])$auc
+    pr_rf_oos_tempted[ss,jj] <- pr.curve(predprob_rf[metauni_sub$delivery_ind], 
+                                      predprob_rf[!metauni_sub$delivery_ind])$auc.integral
+  }
+  write.csv(pr_glm_oos_tempted, 
+            file=paste0("result/realsim_ecam_pr_oos_glm_", method, ".csv"))
+  write.csv(roc_glm_oos_tempted, 
+            file=paste0("result/realsim_ecam_roc_oos_glm_", method, ".csv"))
+  write.csv(pr_rf_oos_tempted, 
+            file=paste0("result/realsim_ecam_pr_oos_rf_", method, ".csv"))
+  write.csv(roc_rf_oos_tempted, 
+            file=paste0("result/realsim_ecam_roc_oos_rf_", method, ".csv"))
+}
+```
+
+
+# FTSVD
+
+## Run FTSVD
+
+Save subject loading and trajectory
+
+```{r run_ftsvd, eval=FALSE}
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    count_sub <- count_tab[rownames(meta_sub),]
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    metauni <- unique(meta_sub[,c("studyid", "delivery_ind")])
+    subdata <- format_tempted(count_sub, meta_sub$visit, meta_sub$studyid, 
+                            threshold=0.95, pseudo=0.5,
+                            transform="clr")
+    # run ftsvd with all subjects and run permanova test
+    svd_sub <- svd_centralize(subdata)
+    res_ftsvd <- tempted(svd_sub$datlist, r = npc, 
+                           resolution = (nkeep[jj]+16)*2, smooth=1e-4)
+    agg_feat <- aggregate_feature(res_ftsvd, NULL, subdata)
+    aggfeat_mat <- reshape(agg_feat$metafeature_aggregate[,1:4],
+                           idvar=c("subID","timepoint") ,
+                           v.names=c("value"), timevar="PC",
+                           direction="wide")
+    colnames(aggfeat_mat)[1] <- "studyid"
+    aggfeat_mat <- merge(aggfeat_mat, metauni, by="studyid")
+    aggfeat_mat[,2+1:npc] <- apply(aggfeat_mat[,2+1:npc], 2, scale)
+    ftsvd_sub <- as.data.frame(res_ftsvd$A_hat)
+    ftsvd_sub$`intercept` <- svd_sub$A_tilde
+    ftsvd_sub$studyid <- rownames(ftsvd_sub)
+    ftsvd_sub <- merge(metauni, ftsvd_sub)
+    write.csv(aggfeat_mat, 
+              file=paste0("simresult_ftsvd/ftsvd_traj_sim",ss,"_ntime",nkeep[jj], ".csv"))
+    write.csv(ftsvd_sub, 
+              file=paste0("simresult_ftsvd/ftsvd_subj_sim",ss,"_ntime",nkeep[jj], ".csv"))
+  }
+}
+```
+
+## Sample-level
+
+### PERMANOVA F-value
+
+```{r ftsvd_sample_Fvalue, eval=FALSE}
+method <- "ftsvd"
+Fmodel_ftsvd <- matrix(NA, nsim, length(nkeep))
+colnames(Fmodel_ftsvd) <- paste0("nsample", nkeep)
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    fname <- paste0(method,"_traj_sim",ss,"_ntime",nkeep[jj], ".csv")
+    aggfeat_mat <- read.csv(file.path(paste0("simresult_", method), fname), row.names=1)
+    # calculate PERMANOVA F
+    dist_aggft <- vegdist(aggfeat_mat[,2+1:npc], method="euclidean")
+    res_perm <- adonis2(dist_aggft ~ aggfeat_mat$delivery)
+    Fmodel_ftsvd[ss,jj] <- res_perm$F[1]
+  }
+}
+
+write.csv(Fmodel_ftsvd, 
+          file=paste0("result/realsim_ecam_Fvalue_", method, ".csv"))
+```
+
+## Subject-level
+
+### In-sample ROC & PR
+
+-   logistic regression
+-   random forest
+
+```{r ftsvd_subj_insample_auc, eval=FALSE}
+method <- "ftsvd"
+roc_sub_glm_ftsvd <- matrix(NA, nsim, length(nkeep))
+colnames(roc_sub_glm_ftsvd) <- paste0("nsample", nkeep)
+pr_sub_rf_ftsvd <- roc_sub_rf_ftsvd <- pr_sub_glm_ftsvd <- roc_sub_glm_ftsvd
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    fname <- paste0(method, "_subj_sim",ss,"_ntime",nkeep[jj], ".csv")
+    ftsvd_sub <- read.csv(file.path("simresult_ftsvd", fname), row.names=1)
+    # glm
+    predprob_glm <- rep(NA, nrow(ftsvd_sub))
+    for (ii in 1:nrow(ftsvd_sub)){
+      glm_fit <- glm(delivery_ind ~ PC1+PC2,
+                   data = ftsvd_sub[-ii,], family = "binomial")
+      predprob_glm[ii] <- predict(glm_fit, newdata=ftsvd_sub[ii,], type = "response")
+    }
+    roc_sub_glm_ftsvd[ss,jj] <- roc.curve(predprob_glm[ftsvd_sub$delivery_ind], 
+                                        predprob_glm[!ftsvd_sub$delivery_ind])$auc
+    pr_sub_glm_ftsvd[ss,jj] <- pr.curve(predprob_glm[ftsvd_sub$delivery_ind], 
+                                      predprob_glm[!ftsvd_sub$delivery_ind])$auc.integral
+    # random forest
+    set.seed(0)
+    rf_fit <- randomForest(as.factor(delivery_ind) ~ PC1+PC2,
+                   data = ftsvd_sub, strata=as.factor(delivery_ind))
+    predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+    roc_sub_rf_ftsvd[ss,jj] <- roc.curve(predprob_rf[ftsvd_sub$delivery_ind], 
+                                        predprob_rf[!ftsvd_sub$delivery_ind])$auc
+    pr_sub_rf_ftsvd[ss,jj] <- pr.curve(predprob_rf[ftsvd_sub$delivery_ind], 
+                              predprob_rf[!ftsvd_sub$delivery_ind])$auc.integral
+  }
+}
+
+write.csv(roc_sub_glm_ftsvd, 
+          file=paste0("result/realsim_ecam_roc_sub_glm_", method, ".csv"))
+write.csv(pr_sub_glm_ftsvd, 
+          file=paste0("result/realsim_ecam_pr_sub_glm_", method, ".csv"))
+write.csv(roc_sub_rf_ftsvd, 
+          file=paste0("result/realsim_ecam_roc_sub_rf_", method, ".csv"))
+write.csv(pr_sub_rf_ftsvd, 
+          file=paste0("result/realsim_ecam_pr_sub_rf_", method, ".csv"))
+```
+
+### Out-of-Sample ROC & PR
+
+-   Logistic regression
+-   Random forest
+
+```{r run_ftsvd_oos, eval=FALSE}
+method <- "ftsvd"
+roc_glm_oos_ftsvd <- matrix(NA, nsim, length(nkeep))
+colnames(roc_glm_oos_ftsvd) <- paste0("nsample", nkeep)
+pr_rf_oos_ftsvd <- roc_rf_oos_ftsvd <- 
+  pr_glm_oos_ftsvd <- roc_glm_oos_ftsvd
+smooth <- c(1, 0.1, 0.01, 0.005, rep(1e-4, 5))
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    count_sub <- count_tab[rownames(meta_sub),]
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    subdata <- format_tempted(count_sub, meta_sub$visit, meta_sub$studyid, 
+                            threshold=0.95, pseudo=0.5, transform="clr")
+    metauni_sub <- unique(meta_sub[,c("studyid", "delivery_ind")])
+    # leave one out prediction
+    predprob_glm <- predprob_rf <- rep(NA, length(subdata))
+    
+    for (ii in 1:length(subdata)){
+      print(ii)
+      svd_train <- svd_centralize(subdata[-ii])
+      res_train <- tempted(svd_train$datlist, r = npc, 
+                           resolution = (nkeep[jj]+16)*2, smooth=1e-4)
+      A_test <- est_test_subject(subdata[ii], res_train, svd_train)
+      dftrain <- data.frame(y=metauni[-ii,"delivery_ind"], x=res_train$A)
+      dftest <- data.frame(y=metauni[ii,"delivery_ind"], x=A_test)
+      # logistic regression
+      glm_fit <- glm(y ~ ., data = dftrain, family = "binomial")
+      predprob_glm[ii] <- predict(glm_fit, newdata=dftest, type = "response")
+      # random forest
+      rf_fit <- randomForest(as.factor(y) ~ ., data = dftrain,
+                             strata=as.factor(y))
+      predprob_rf[ii] <- predict(rf_fit, newdata=dftest, type = "prob")[,"TRUE"]
+    }
+    roc_glm_oos_ftsvd[ss,jj] <- roc.curve(predprob_glm[metauni_sub$delivery_ind], 
+                                        predprob_glm[!metauni_sub$delivery_ind])$auc
+    pr_glm_oos_ftsvd[ss,jj] <- pr.curve(predprob_glm[metauni_sub$delivery_ind], 
+                                      predprob_glm[!metauni_sub$delivery_ind])$auc.integral
+    roc_rf_oos_ftsvd[ss,jj] <- roc.curve(predprob_rf[metauni_sub$delivery_ind], 
+                                        predprob_rf[!metauni_sub$delivery_ind])$auc
+    pr_rf_oos_ftsvd[ss,jj] <- pr.curve(predprob_rf[metauni_sub$delivery_ind], 
+                                      predprob_rf[!metauni_sub$delivery_ind])$auc.integral
+  }
+  write.csv(pr_glm_oos_ftsvd, 
+            file=paste0("result/realsim_ecam_pr_oos_glm_", method, ".csv"))
+  write.csv(roc_glm_oos_ftsvd, 
+            file=paste0("result/realsim_ecam_roc_oos_glm_", method, ".csv"))
+  write.csv(pr_rf_oos_ftsvd, 
+            file=paste0("result/realsim_ecam_pr_oos_rf_", method, ".csv"))
+  write.csv(roc_rf_oos_ftsvd, 
+            file=paste0("result/realsim_ecam_roc_oos_rf_", method, ".csv"))
+}
+```
+
+# CTF
+
+## Run CTF
+
+Run with order of time
+
+Save subject distance matrix and trajectory
+
+```{r run_ctf, eval=FALSE}
+outdir <- "simresult_ctf"
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    ntime <- nkeep[jj]
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    meta_sub <- meta_sub[,c("visit", "studyid")]
+    count_sub <- count_tab[rownames(meta_sub),]
+    count_sub <- count_sub[,colMeans(count_sub==0)<=0.95]
+    py_run_file(file="run_ecam_ctf.py",convert=F)
+  }
+}
+```
+
+
+
+## Sample-level
+
+### PERMANOVA F-value
+
+```{r ctf_sample_Fvalue, eval=FALSE}
+Fmodel_ctf <- matrix(NA, nsim, length(nkeep))
+colnames(Fmodel_ctf) <- paste0("nsample", nkeep)
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    ntime <- nkeep[jj]
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    count_sub <- count_tab[rownames(meta_sub),]
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    metauni <- unique(meta_sub[,c("studyid", "delivery_ind")])
+    # calculate PERMANOVA F
+    fname <- paste0("distance-matrix_sim", ss, "_ntime", ntime, ".qza")
+    ctf_dist <- as.matrix(read_qza(file.path("simresult_ctf", fname))$data)
+    deliv <- meta_sub[rownames(ctf_dist),]$delivery
+    res_perm <- adonis2(ctf_dist ~ deliv)
+    Fmodel_ctf[ss,jj] <- res_perm$F[1]
+  }
+}
+
+write.csv(Fmodel_ctf, 
+          file="result/realsim_ecam_Fvalue_ctf.csv")
+```
+
+## Subject-level
+
+### In-sample ROC & PR
+
+-   logistic regression
+-   random forest
+
+```{r ctf_subj_insample_glm_auc, eval=FALSE}
+roc_sub_glm_ctf <- matrix(NA, nsim, length(nkeep))
+colnames(roc_sub_glm_ctf) <- paste0("nsample", nkeep)
+pr_sub_rf_ctf <- roc_sub_rf_ctf <- pr_sub_glm_ctf <- roc_sub_glm_ctf
+for (jj in 1:length(nkeep)){
+  print(jj)
+  ntime <- nkeep[jj]
+  for (ss in 1:nsim){
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    count_sub <- count_tab[rownames(meta_sub),]
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    metauni_sub <- unique(meta_sub[,c("studyid", "delivery_ind")])
+    rownames(metauni_sub) <- metauni_sub$studyid
+    fname <- paste0("subject-biplot_sim", ss, "_ntime", ntime, ".qza")
+    ctf_sub <- read_qza(file.path("simresult_ctf", fname))$data$Vectors
+    colnames(ctf_sub)[1] <- "studyid"
+    ctf_sub <- merge(ctf_sub, metauni_sub)
+    # logistic regression
+    predprob_glm <- rep(NA, nrow(ctf_sub))
+    for(ii in 1:nrow(ctf_sub)){
+      glm_fit <- glm(delivery_ind~PC1+PC2, data=ctf_sub[-ii,])
+      predprob_glm[ii] <- predict(glm_fit, newdata=ctf_sub[ii,], type = "response")
+    }
+    roc_sub_glm_ctf[ss,jj] <- roc.curve(predprob_glm[ctf_sub$delivery_ind], 
+                                    predprob_glm[!ctf_sub$delivery_ind])$auc
+    pr_sub_glm_ctf[ss,jj] <- pr.curve(predprob_glm[ctf_sub$delivery_ind], 
+                                  predprob_glm[!ctf_sub$delivery_ind])$auc.integral
+    # random forest
+    set.seed(0)
+    rf_fit <- randomForest(as.factor(delivery_ind)~PC1+PC2, data=ctf_sub, strata=as.factor(delivery_ind))
+    predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+    roc_sub_rf_ctf[ss,jj] <- roc.curve(predprob_rf[ctf_sub$delivery_ind], 
+                                    predprob_rf[!ctf_sub$delivery_ind])$auc
+    pr_sub_rf_ctf[ss,jj] <- pr.curve(predprob_rf[ctf_sub$delivery_ind], 
+                                  predprob_rf[!ctf_sub$delivery_ind])$auc.integral
+  }
+}
+write.csv(roc_sub_glm_ctf, 
+          file="result/realsim_ecam_roc_sub_glm_ctf.csv")
+write.csv(pr_sub_glm_ctf, 
+          file="result/realsim_ecam_pr_sub_glm_ctf.csv")
+write.csv(roc_sub_rf_ctf, 
+          file="result/realsim_ecam_roc_sub_rf_ctf.csv")
+write.csv(pr_sub_rf_ctf, 
+          file="result/realsim_ecam_pr_sub_rf_ctf.csv")
+```
+
+
+# Rerun CTF
+
+## Run CTF with month
+
+Run with order of time
+
+Save subject distance matrix and trajectory
+
+```{r run_ctf2, eval=FALSE}
+outdir <- "simresult_ctf2"
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    ntime <- nkeep[jj]
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    meta_sub$month <- floor(meta_sub$day_of_life/30)
+    meta_sub <- meta_sub[,c("month", "studyid")]
+    colnames(meta_sub)[1] <- "visit"
+    count_sub <- count_tab[rownames(meta_sub),]
+    count_sub <- count_sub[,colMeans(count_sub==0)<=0.95]
+    py_run_file(file="run_ecam_ctf.py",convert=F)
+  }
+}
+```
+
+
+
+## Sample-level
+
+### PERMANOVA F-value
+
+```{r ctf_sample_Fvalue2, eval=FALSE}
+Fmodel_ctf <- matrix(NA, nsim, length(nkeep))
+colnames(Fmodel_ctf) <- paste0("nsample", nkeep)
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    ntime <- nkeep[jj]
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    count_sub <- count_tab[rownames(meta_sub),]
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    metauni <- unique(meta_sub[,c("studyid", "delivery_ind")])
+    # calculate PERMANOVA F
+    fname <- paste0("distance-matrix_sim", ss, "_ntime", ntime, ".qza")
+    ctf_dist <- as.matrix(read_qza(file.path("simresult_ctf2", fname))$data)
+    deliv <- meta_sub[rownames(ctf_dist),]$delivery
+    res_perm <- adonis2(ctf_dist ~ deliv)
+    Fmodel_ctf[ss,jj] <- res_perm$F[1]
+  }
+}
+
+write.csv(Fmodel_ctf, 
+          file="result/realsim_ecam_Fvalue_ctf2.csv")
+```
+
+## Subject-level
+
+### In-sample ROC & PR
+
+-   logistic regression
+-   random forest
+
+```{r ctf_subj_insample_glm_auc2, eval=FALSE}
+roc_sub_glm_ctf <- matrix(NA, nsim, length(nkeep))
+colnames(roc_sub_glm_ctf) <- paste0("nsample", nkeep)
+pr_sub_rf_ctf <- roc_sub_rf_ctf <- pr_sub_glm_ctf <- roc_sub_glm_ctf
+for (jj in 1:length(nkeep)){
+  print(jj)
+  ntime <- nkeep[jj]
+  for (ss in 1:nsim){
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    count_sub <- count_tab[rownames(meta_sub),]
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    metauni_sub <- unique(meta_sub[,c("studyid", "delivery_ind")])
+    rownames(metauni_sub) <- metauni_sub$studyid
+    fname <- paste0("subject-biplot_sim", ss, "_ntime", ntime, ".qza")
+    ctf_sub <- read_qza(file.path("simresult_ctf2", fname))$data$Vectors
+    colnames(ctf_sub)[1] <- "studyid"
+    ctf_sub <- merge(ctf_sub, metauni_sub)
+    # logistic regression
+    predprob_glm <- rep(NA, nrow(ctf_sub))
+    for(ii in 1:nrow(ctf_sub)){
+      glm_fit <- glm(delivery_ind~PC1+PC2, data=ctf_sub[-ii,])
+      predprob_glm[ii] <- predict(glm_fit, newdata=ctf_sub[ii,], type = "response")
+    }
+    roc_sub_glm_ctf[ss,jj] <- roc.curve(predprob_glm[ctf_sub$delivery_ind], 
+                                    predprob_glm[!ctf_sub$delivery_ind])$auc
+    pr_sub_glm_ctf[ss,jj] <- pr.curve(predprob_glm[ctf_sub$delivery_ind], 
+                                  predprob_glm[!ctf_sub$delivery_ind])$auc.integral
+    # random forest
+    set.seed(0)
+    rf_fit <- randomForest(as.factor(delivery_ind)~PC1+PC2, data=ctf_sub, strata=as.factor(delivery_ind))
+    predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+    roc_sub_rf_ctf[ss,jj] <- roc.curve(predprob_rf[ctf_sub$delivery_ind], 
+                                    predprob_rf[!ctf_sub$delivery_ind])$auc
+    pr_sub_rf_ctf[ss,jj] <- pr.curve(predprob_rf[ctf_sub$delivery_ind], 
+                                  predprob_rf[!ctf_sub$delivery_ind])$auc.integral
+  }
+}
+write.csv(roc_sub_glm_ctf, 
+          file="result/realsim_ecam_roc_sub_glm_ctf2.csv")
+write.csv(pr_sub_glm_ctf, 
+          file="result/realsim_ecam_pr_sub_glm_ctf2.csv")
+write.csv(roc_sub_rf_ctf, 
+          file="result/realsim_ecam_roc_sub_rf_ctf2.csv")
+write.csv(pr_sub_rf_ctf, 
+          file="result/realsim_ecam_pr_sub_rf_ctf2.csv")
+```
+
+
+# microTensor
+
+## Run microTensor
+
+Save subject loading and trajectory
+
+```{r run_microtensor, eval=FALSE}
+set.seed(0)
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    ntime <- nkeep[jj]
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    meta_sub$sampleid <- rownames(meta_sub)
+    metauni <- unique(meta_sub[,c("studyid", "delivery_ind")])
+    count_sub <- count_tab[meta_sub$sampleid,]
+    count_sub <- count_sub[,colMeans(count_sub==0)<=0.95]
+
+    X_array <- array(NA, dim = c(ncol(count_sub),
+                             length(unique(meta_sub$studyid)),
+                             ntime))
+    dimnames(X_array) <- list(colnames(count_sub),
+                              unique(meta_sub$studyid),
+                              1:ntime)
+    for(k in seq(1, dim(X_array)[3])) {
+      k_df_samples <- meta_sub %>% 
+        dplyr::filter(visit == k)
+      k_df_samples <- k_df_samples[!duplicated(k_df_samples$studyid),]
+      X_array[, k_df_samples$studyid, k] <- 
+        t(count_sub[rownames(k_df_samples), ])
+    }
+    # run microTensor
+    set.seed(0)
+    fit_microTensor <- 
+      microTensor::microTensor(X = X_array, R = npc, 
+                               nn_t = TRUE, ortho_m = TRUE,
+                               weighted = TRUE)
+    # get subject loading
+    micro_sub <- as.data.frame(fit_microTensor$s)
+    colnames(micro_sub) <- paste0("PC",1:npc)
+    micro_sub$studyid <- dimnames(X_array)[[2]]
+    micro_sub <- merge(metauni, micro_sub)
+    write.csv(micro_sub, 
+              file=paste0("simresult_micro/micro_subj_sim", ss, "_ntime", ntime, ".csv"))
+    # get sample trajectories
+    micro_traj <- microTensor::create_loading(fit_decomp = fit_microTensor,
+                                              feature_names = dimnames(X_array)[[1]],
+                                              subject_names = dimnames(X_array)[[2]],
+                                              time_names = 1:ntime,
+                                              class = "sample")
+    colnames(micro_traj) <- c("studyid", "visit", paste0("PC",1:npc))
+    micro_traj <- merge(meta_sub[,c("sampleid","day_of_life","studyid", "visit", "delivery_ind")], micro_traj)
+    write.csv(micro_traj, 
+              file=paste0("simresult_micro/micro_traj_sim", ss, "_ntime", ntime, ".csv"))
+  }
+}
+```
+
+
+## Sample-level
+
+### PERMANOVA F-value
+
+```{r micro_sample_Fvalue, eval=FALSE}
+Fmodel_micro <- matrix(NA, nsim, length(nkeep))
+colnames(Fmodel_micro) <- paste0("nsample", nkeep)
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    fname <- paste0("micro_traj_sim",ss,"_ntime",nkeep[jj], ".csv")
+    aggfeat_mat <- read.csv(file.path("simresult_micro", fname), row.names=1)
+    # calculate PERMANOVA F
+    dist_aggft <- vegdist(aggfeat_mat[,paste0("PC",1:npc)], method="euclidean")
+    res_perm <- adonis2(dist_aggft ~ aggfeat_mat$delivery_ind)
+    Fmodel_micro[ss,jj] <- res_perm$F[1]
+  }
+}
+
+write.csv(Fmodel_micro, 
+          file=paste0("result/realsim_ecam_Fvalue_micro.csv"))
+```
+
+## Subject-level
+
+### In-sample ROC & PR
+
+-   logistic regression
+-   random forest
+
+```{r micro_subj_insample_auc, eval=FALSE}
+method <- "micro"
+roc_sub_glm_micro <- matrix(NA, nsim, length(nkeep))
+colnames(roc_sub_glm_micro) <- paste0("nsample", nkeep)
+pr_sub_rf_micro <- roc_sub_rf_micro <- pr_sub_glm_micro <- roc_sub_glm_micro
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    fname <- paste0("micro_subj_sim",ss,"_ntime",nkeep[jj], ".csv")
+    micro_sub <- read.csv(file.path(paste0("simresult_", method), fname), row.names=1)
+    # glm
+    predprob_glm <- rep(NA, nrow(micro_sub))
+    for (ii in 1:nrow(micro_sub)){
+      glm_fit <- glm(delivery_ind ~ PC1+PC2,
+                   data = micro_sub[-ii,], family = "binomial")
+      predprob_glm[ii] <- predict(glm_fit, newdata=micro_sub[ii,], type = "response")
+    }
+    roc_sub_glm_micro[ss,jj] <- roc.curve(predprob_glm[micro_sub$delivery_ind], 
+                                        predprob_glm[!micro_sub$delivery_ind])$auc
+    pr_sub_glm_micro[ss,jj] <- pr.curve(predprob_glm[micro_sub$delivery_ind], 
+                                      predprob_glm[!micro_sub$delivery_ind])$auc.integral
+    # random forest
+    set.seed(0)
+    rf_fit <- randomForest(as.factor(delivery_ind) ~ PC1+PC2,
+                           data = micro_sub, strata=as.factor(delivery_ind))
+    predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+    roc_sub_rf_micro[ss,jj] <- roc.curve(predprob_rf[micro_sub$delivery_ind], 
+                                        predprob_rf[!micro_sub$delivery_ind])$auc
+    pr_sub_rf_micro[ss,jj] <- pr.curve(predprob_rf[micro_sub$delivery_ind], 
+                              predprob_rf[!micro_sub$delivery_ind])$auc.integral
+  }
+}
+
+write.csv(roc_sub_glm_micro, 
+          file=paste0("result/realsim_ecam_roc_sub_glm_", method, ".csv"))
+write.csv(pr_sub_glm_micro, 
+          file=paste0("result/realsim_ecam_pr_sub_glm_", method, ".csv"))
+write.csv(roc_sub_rf_micro, 
+          file=paste0("result/realsim_ecam_roc_sub_rf_", method, ".csv"))
+write.csv(pr_sub_rf_micro, 
+          file=paste0("result/realsim_ecam_pr_sub_rf_", method, ".csv"))
+```
+
+
+# Rerun microTensor
+
+## Run microTensor with month
+
+Save subject loading and trajectory
+
+```{r run_microtensor2, eval=FALSE}
+set.seed(0)
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    ntime <- nkeep[jj]
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    meta_sub$sampleid <- rownames(meta_sub)
+    meta_sub$month <- floor(meta_sub$day_of_life/30)
+    metauni <- unique(meta_sub[,c("studyid", "delivery_ind")])
+    count_sub <- count_tab[meta_sub$sampleid,]
+    count_sub <- count_sub[,colMeans(count_sub==0)<=0.95]
+
+    tb_time <- table(meta_sub$month)
+    X_array <- array(NA, dim = c(ncol(count_sub),
+                                 length(unique(meta_sub$studyid)),
+                                 length(tb_time)))
+    dimnames(X_array) <- list(colnames(count_sub),
+                              unique(meta_sub$studyid),
+                              names(tb_time))
+    for(k in seq(1, dim(X_array)[3])) {
+      k_df_samples <- meta_sub %>% 
+        dplyr::filter(meta_sub$month == tb_time[k])
+      k_df_samples <- k_df_samples[!duplicated(k_df_samples$studyid),]
+      X_array[, k_df_samples$studyid, k] <- 
+        t(count_sub[rownames(k_df_samples), ])
+    }
+    # run microTensor
+    set.seed(0)
+    fit_microTensor <- 
+      microTensor::microTensor(X = X_array, R = npc, 
+                               nn_t = TRUE, ortho_m = TRUE,
+                               weighted = TRUE)
+    # get subject loading
+    micro_sub <- as.data.frame(fit_microTensor$s)
+    colnames(micro_sub) <- paste0("PC",1:npc)
+    micro_sub$studyid <- dimnames(X_array)[[2]]
+    micro_sub <- merge(metauni, micro_sub)
+    write.csv(micro_sub, 
+              file=paste0("simresult_micro2/micro_subj_sim", ss, "_ntime", ntime, ".csv"))
+    # get sample trajectories
+    micro_traj <- microTensor::create_loading(fit_decomp = fit_microTensor,
+                                              feature_names = dimnames(X_array)[[1]],
+                                              subject_names = dimnames(X_array)[[2]],
+                                              time_names = names(tb_time),
+                                              class = "sample")
+    colnames(micro_traj) <- c("studyid", "month", paste0("PC",1:npc))
+    micro_traj <- merge(meta_sub[,c("sampleid","day_of_life","studyid", "month", "delivery_ind")], micro_traj)
+    write.csv(micro_traj, 
+              file=paste0("simresult_micro2/micro_traj_sim", ss, "_ntime", ntime, ".csv"))
+  }
+}
+```
+
+
+## Sample-level
+
+### PERMANOVA F-value
+
+```{r micro_sample_Fvalue2, eval=FALSE}
+Fmodel_micro <- matrix(NA, nsim, length(nkeep))
+colnames(Fmodel_micro) <- paste0("nsample", nkeep)
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    fname <- paste0("micro_traj_sim",ss,"_ntime",nkeep[jj], ".csv")
+    aggfeat_mat <- read.csv(file.path("simresult_micro2", fname), row.names=1)
+    # calculate PERMANOVA F
+    dist_aggft <- vegdist(aggfeat_mat[,paste0("PC",1:npc)], method="euclidean")
+    res_perm <- adonis2(dist_aggft ~ aggfeat_mat$delivery_ind)
+    Fmodel_micro[ss,jj] <- res_perm$F[1]
+  }
+}
+
+write.csv(Fmodel_micro, 
+          file=paste0("result/realsim_ecam_Fvalue_micro2.csv"))
+```
+
+## Subject-level
+
+### In-sample ROC & PR
+
+-   logistic regression
+-   random forest
+
+```{r micro_subj_insample_auc2, eval=FALSE}
+method <- "micro2"
+roc_sub_glm_micro <- matrix(NA, nsim, length(nkeep))
+colnames(roc_sub_glm_micro) <- paste0("nsample", nkeep)
+pr_sub_rf_micro <- roc_sub_rf_micro <- pr_sub_glm_micro <- roc_sub_glm_micro
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    fname <- paste0("micro_subj_sim",ss,"_ntime",nkeep[jj], ".csv")
+    micro_sub <- read.csv(file.path(paste0("simresult_", method), fname), row.names=1)
+    # glm
+    predprob_glm <- rep(NA, nrow(micro_sub))
+    for (ii in 1:nrow(micro_sub)){
+      glm_fit <- glm(delivery_ind ~ PC1+PC2,
+                   data = micro_sub[-ii,], family = "binomial")
+      predprob_glm[ii] <- predict(glm_fit, newdata=micro_sub[ii,], type = "response")
+    }
+    roc_sub_glm_micro[ss,jj] <- roc.curve(predprob_glm[micro_sub$delivery_ind], 
+                                        predprob_glm[!micro_sub$delivery_ind])$auc
+    pr_sub_glm_micro[ss,jj] <- pr.curve(predprob_glm[micro_sub$delivery_ind], 
+                                      predprob_glm[!micro_sub$delivery_ind])$auc.integral
+    # random forest
+    set.seed(0)
+    rf_fit <- randomForest(as.factor(delivery_ind) ~ PC1+PC2,
+                           data = micro_sub, strata=as.factor(delivery_ind))
+    predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+    roc_sub_rf_micro[ss,jj] <- roc.curve(predprob_rf[micro_sub$delivery_ind], 
+                                        predprob_rf[!micro_sub$delivery_ind])$auc
+    pr_sub_rf_micro[ss,jj] <- pr.curve(predprob_rf[micro_sub$delivery_ind], 
+                              predprob_rf[!micro_sub$delivery_ind])$auc.integral
+  }
+}
+
+write.csv(roc_sub_glm_micro, 
+          file=paste0("result/realsim_ecam_roc_sub_glm_", method, ".csv"))
+write.csv(pr_sub_glm_micro, 
+          file=paste0("result/realsim_ecam_pr_sub_glm_", method, ".csv"))
+write.csv(roc_sub_rf_micro, 
+          file=paste0("result/realsim_ecam_roc_sub_rf_", method, ".csv"))
+write.csv(pr_sub_rf_micro, 
+          file=paste0("result/realsim_ecam_pr_sub_rf_", method, ".csv"))
+```
+
+
+
+
+# TCAM
+
+## Run TCAM
+
+Save subject loading
+
+```{r run_tcam, eval=FALSE}
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    count_sub <- count_tab[rownames(meta_sub),]
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    subdata <- format_tempted(count_sub, meta_sub$visit, meta_sub$studyid, 
+                            threshold=0.95, pseudo=0.5,
+                            transform="clr")
+    tmp <- simplify2array(subdata)
+    dat_sub <- as.data.frame(apply(tmp,1,c))
+    studyid <- rep(dimnames(tmp)[[3]], each=dim(tmp)[2])
+    dat_sub <- cbind(studyid, dat_sub)
+    fnameout <- paste0("simresult_tcam/tcam_score_sim", ss, "_ntime", nkeep[jj], ".csv")
+    set.seed(0)
+    py_run_file(file="run_ecam_tcam.py",convert=F)
+  }
+}
+```
+
+## Subject-level
+
+### In-sample ROC & PR
+
+-   logistic regression
+-   random forest
+
+```{r tcam_subj_insample_auc, eval=FALSE}
+method <- "tcam"
+roc_sub_glm_tcam <- matrix(NA, nsim, length(nkeep))
+colnames(roc_sub_glm_tcam) <- paste0("nsample", nkeep)
+pr_sub_rf_tcam <- roc_sub_rf_tcam <- pr_sub_glm_tcam <- roc_sub_glm_tcam
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    fname <- paste0(method, "_score_sim",ss,"_ntime",nkeep[jj], ".csv")
+    tcam_sub <- read.csv(file.path("simresult_tcam", fname), sep="\t",
+                         row.names=1, header=T)
+    colnames(tcam_sub) <- paste0("PC", 1:npc)
+    tcam_sub$studyid <- rownames(tcam_sub)
+    tcam_sub <- merge(tcam_sub, metauni)
+    # glm
+    predprob_glm <- rep(NA, nrow(tcam_sub))
+    for (ii in 1:nrow(tcam_sub)){
+      glm_fit <- glm(delivery_ind ~ PC1+PC2,
+                   data = tcam_sub[-ii,], family = "binomial")
+      predprob_glm[ii] <- predict(glm_fit, newdata=tcam_sub[ii,], type = "response")
+    }
+    roc_sub_glm_tcam[ss,jj] <- roc.curve(predprob_glm[tcam_sub$delivery_ind], 
+                                        predprob_glm[!tcam_sub$delivery_ind])$auc
+    pr_sub_glm_tcam[ss,jj] <- pr.curve(predprob_glm[tcam_sub$delivery_ind], 
+                                      predprob_glm[!tcam_sub$delivery_ind])$auc.integral
+    # random forest
+    rf_fit <- randomForest(as.factor(delivery_ind) ~ PC1+PC2,
+                   data = tcam_sub, strata=as.factor(delivery_ind))
+    predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+    roc_sub_rf_tcam[ss,jj] <- roc.curve(predprob_rf[tcam_sub$delivery_ind], 
+                                        predprob_rf[!tcam_sub$delivery_ind])$auc
+    pr_sub_rf_tcam[ss,jj] <- pr.curve(predprob_rf[tcam_sub$delivery_ind], 
+                              predprob_rf[!tcam_sub$delivery_ind])$auc.integral
+  }
+}
+
+write.csv(roc_sub_glm_tcam, 
+          file=paste0("result/realsim_ecam_roc_sub_glm_", method, ".csv"))
+write.csv(pr_sub_glm_tcam, 
+          file=paste0("result/realsim_ecam_pr_sub_glm_", method, ".csv"))
+write.csv(roc_sub_rf_tcam, 
+          file=paste0("result/realsim_ecam_roc_sub_rf_", method, ".csv"))
+write.csv(pr_sub_rf_tcam, 
+          file=paste0("result/realsim_ecam_pr_sub_rf_", method, ".csv"))
+```
+
+### Out-of-Sample ROC & PR
+
+-   Logistic regression
+-   Random forest
+
+```{r run_tcam_oos, eval=FALSE}
+method <- "tcam"
+roc_glm_oos_tcam <- matrix(NA, nsim, length(nkeep))
+colnames(roc_glm_oos_tcam) <- paste0("nsample", nkeep)
+pr_rf_oos_tcam <- roc_rf_oos_tcam <- 
+  pr_glm_oos_tcam <- roc_glm_oos_tcam
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    count_sub <- count_tab[rownames(meta_sub),]
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    subdata <- format_tempted(count_sub, meta_sub$visit, meta_sub$studyid, 
+                            threshold=0.95, pseudo=0.5, transform="clr")
+    metauni_sub <- unique(meta_sub[,c("studyid", "delivery_ind")])
+    # leave one out prediction
+    predprob_glm <- predprob_rf <- rep(NA, length(subdata))
+    
+    for (ii in 1:length(subdata)){
+      print(ii)
+      subdata_train <- subdata[-ii]
+      tmp <- simplify2array(subdata_train)
+      dat_train <- as.data.frame(apply(tmp,1,c))
+      studyid <- rep(dimnames(tmp)[[3]], each=dim(tmp)[2])
+      dat_train <- cbind(studyid, dat_train)
+      
+      subdata_test <- subdata[ii]
+      tmp <- simplify2array(subdata_test)
+      dat_test <- as.data.frame(apply(tmp,1,c))
+      studyid <- rep(dimnames(tmp)[[3]], each=dim(tmp)[2])
+      dat_test <- cbind(studyid, dat_test)
+      fnameout <- "simresult_tcam/tcam_test_score"
+      
+      set.seed(0)
+      py_run_file(file="run_ecam_tcam_oos.py",convert=F)
+      
+      dftrain <- read.csv(paste0(fnameout, "_train.csv"), sep="\t", row.names=1)
+      dftest <- read.csv(paste0(fnameout, "_test.csv"), sep="\t", row.names=1)
+      colnames(dftrain) <- colnames(dftest) <- paste0("PC", 1:npc)
+      dftrain$studyid <- rownames(dftrain)
+      dftrain <- merge(dftrain, metauni_sub)
+      dftest$studyid <- rownames(dftest)
+      dftest <- merge(dftest, metauni_sub)
+      
+      # logistic regression
+      glm_fit <- glm(delivery_ind ~ PC1+PC2, data = dftrain, family = "binomial")
+      predprob_glm[ii] <- predict(glm_fit, newdata=dftest, type = "response")
+      # random forest
+      rf_fit <- randomForest(as.factor(delivery_ind) ~ PC1+PC2, 
+                             data = dftrain, strata=as.factor(delivery_ind))
+      predprob_rf[ii] <- predict(rf_fit, newdata=dftest, type = "prob")[,"TRUE"]
+    }
+    roc_glm_oos_tcam[ss,jj] <- roc.curve(predprob_glm[metauni_sub$delivery_ind],
+                                      predprob_glm[!metauni_sub$delivery_ind])$auc
+    pr_glm_oos_tcam[ss,jj] <- pr.curve(predprob_glm[metauni_sub$delivery_ind], 
+                                      predprob_glm[!metauni_sub$delivery_ind])$auc.integral
+    roc_rf_oos_tcam[ss,jj] <- roc.curve(predprob_rf[metauni_sub$delivery_ind], 
+                                      predprob_rf[!metauni_sub$delivery_ind])$auc
+    pr_rf_oos_tcam[ss,jj] <- pr.curve(predprob_rf[metauni_sub$delivery_ind], 
+                                      predprob_rf[!metauni_sub$delivery_ind])$auc.integral
+  }
+  write.csv(pr_glm_oos_tcam, 
+            file=paste0("result/realsim_ecam_pr_oos_glm_", method, ".csv"))
+  write.csv(roc_glm_oos_tcam, 
+            file=paste0("result/realsim_ecam_roc_oos_glm_", method, ".csv"))
+  write.csv(pr_rf_oos_tcam, 
+            file=paste0("result/realsim_ecam_pr_oos_rf_", method, ".csv"))
+  write.csv(roc_rf_oos_tcam, 
+            file=paste0("result/realsim_ecam_roc_oos_rf_", method, ".csv"))
+}
+```
+
+
+
+# PCoA
+
+## Sample-level
+
+### PERMANOVA F-value
+
+```{r pcoa_sample_Fvalue, eval=FALSE}
+metric_file <- list.files("data", pattern = "distance_matrix")
+metric_file
+metric_name <- c("Aitchison", "Bray-Curtis", 
+                 "gUniFrac-alpha0", "gUniFrac-alpha1", "gUniFrac-alpha5", 
+                 "Jaccard", "unweighted_UniFrac", "Weighted_UniFrac")
+distmat_all <- vector(mode="list", length(metric_name))
+names(distmat_all) <- metric_name
+for (ii in 1:length(metric_name)){
+  tmp <- read_qza(paste0("data/", metric_file[ii]))$data
+  distmat_all[[ii]] <- as.matrix(tmp)
+}
+
+Fmodel <- array(0, dim=c(length(metric_name), nsim, length(nkeep)),
+                     dimnames=list(metric_name, paste0("sim",1:nsim), paste0("nsample=",nkeep)))
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    count_sub <- count_tab[rownames(meta_sub),]
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    ind_sub <- rownames(meta_sub)
+    for (ii in 1:length(metric_name)){
+      dist_sub <- distmat_all[[ii]][ind_sub,ind_sub]
+      res_perm <- adonis2(dist_sub ~ meta_sub$delivery)
+      Fmodel[ii,ss,jj] <- res_perm$F[1]
+    }
+  }
+  for (ii in 1:length(metric_name)){
+    write.csv(Fmodel[ii,,], 
+       file=paste0("result/realsim_ecam_Fvalue_PCoA_", metric_name[ii], ".csv"))
+  }
+}
+```
+
+
+# Plot for Main Figure 2
+
+## Summarize subject-level ROC and PR
+
+```{r summary_sub_classification}
+method  <- c("tempted", "ctf", "micro", "tcam", "ftsvd")
+measure <- c("roc", "pr")
+classify <- c("glm", "rf")
+
+tab_auc_subj <- NULL
+
+for (ms in measure){
+  for (cls in classify){ 
+    # in sample
+    for (mthd in method){
+      fname <- paste0("result/realsim_ecam_", ms, "_sub_", cls, "_", mthd, ".csv")
+      tab0 <- read.csv(fname, row.names=1)
+      tab0 <- 1-as.matrix(tab0)
+      tab_tmp <- data.frame(auc=as.vector(tab0),
+                      nsample=as.vector(t(matrix(rep(nkeep,nsim),length(nkeep),nsim))),
+                      method=toupper(mthd), measure=toupper(ms), classify=cls,
+                      type="In-Sample")
+      tab_auc_subj <- rbind(tab_auc_subj, tab_tmp)
+    }
+    # out of sample
+    for (mthd in c("tempted", "tcam", "ftsvd")){
+      fname <- paste0("result/realsim_ecam_", ms, "_oos_", cls, "_", mthd, ".csv")
+      tab0 <- read.csv(fname, row.names=1)
+      tab0 <- 1-as.matrix(tab0)
+      tab_tmp <- data.frame(auc=as.vector(tab0),
+                      nsample=as.vector(t(matrix(rep(nkeep,nsim),length(nkeep),nsim))),
+                      method=toupper(mthd), measure=toupper(ms), classify=cls,
+                      type="Out-of-Sample")
+      tab_auc_subj <- rbind(tab_auc_subj, tab_tmp)
+    }
+  }  
+}
+tab_auc_subj$classify <- gsub("glm", "Logistic Regression", tab_auc_subj$classify)
+tab_auc_subj$classify <- gsub("rf", "Random Forest", tab_auc_subj$classify)
+tab_auc_subj$method <- gsub("MICROTENSOR", "microTensor", tab_auc_subj$method)
+```
+
+### Plot all subject-level PR
+
+```{r plot_sub_auc}
+tab_auc_subj$nsample <- as.factor(tab_auc_subj$nsample)
+tab1 <- aggregate(auc~nsample+measure+method+classify+type, data=tab_auc_subj, 
+                  FUN=mean)
+names(tab1)[6] <- "mean"
+tab2 <- aggregate(auc~nsample+measure+method+classify+type, data=tab_auc_subj, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[6] <- "se"
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_auc_subj_summary <- merge(tab1, tab2)
+tab_auc_subj_summary$nsample <- factor(tab_auc_subj_summary$nsample, 
+                                     level=as.character(nkeep))
+
+color_method <- c("#33a02c", #green for CTF
+                  "#bdbdbd", #lightgray for FTSVD
+                  "#0096FF", #blue for microTensor
+                  "#f525dd", #pink for TCAM
+                  "#5A5A5A") #gray for TEMPTED
+
+ann_text <- tab_auc_subj_summary[2,]
+ann_text$mean <- mean(!metauni$delivery_ind)-0.015
+ann_text$nsample <- 6.5
+p_subj_pr <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="PR"), 
+                            aes(x=nsample, y=mean, group=paste0(type,method), color=method)) + 
+  geom_line(size=1, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=1) + 
+  geom_hline(yintercept=mean(!metauni$delivery_ind), linetype="dotted", color = "black", size=1) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_wrap(.~classify) +
+  labs(y="AUC-PR Error", x="Number of Time Points")+
+  ggtitle("Subject Level") +
+  scale_color_manual(values=color_method) +
+  theme_bw()
+p_subj_pr
+```
+
+## Summarize sample-level PERMANOVA F-values
+
+```{r summary_Fvalue}
+metric_name <- c("Bray-Curtis",
+                 "unweighted_UniFrac", "Weighted_UniFrac")
+# read in results
+Fmodel <- array(0, dim=c(length(metric_name)+4, nsim, length(nkeep)),
+                dimnames=list(c(metric_name, "TEMPTED", "CTF", "microTensor", "FTSVD"), paste0("sim",1:nsim), paste0("nsample=",nkeep)))
+for (ii in 1:length(metric_name)){
+  Fmodel[ii,,] <- as.matrix(read.csv(paste0("result/realsim_ecam_Fvalue_PCoA_", metric_name[ii], ".csv"),
+                           row.names=1))
+}
+for (mthd in c("tempted", "ctf", "micro", "ftsvd")){
+  ii <- ii + 1
+  Fmodel[ii,,] <- as.matrix(read.csv(
+    paste0("result/realsim_ecam_Fvalue_", mthd, ".csv"), row.names=1))
+}
+# make table
+tab_Fmodel <- NULL
+for (ii in 1:dim(Fmodel)[1]){
+  tab_tmp <- data.frame(Fvalue=as.vector(Fmodel[ii,,]),
+                        nsample=as.vector(t(matrix(rep(nkeep,nsim),length(nkeep),nsim))),
+                        method=dimnames(Fmodel)[[1]][ii])
+  tab_Fmodel <- rbind(tab_Fmodel, tab_tmp)
+}
+tab_Fmodel$method[tab_Fmodel$method=="unweighted_UniFrac"] <- "UniFrac"
+tab_Fmodel$method[tab_Fmodel$method=="Weighted_UniFrac"] <- "Weighted UniFrac"
+```
+
+### Plot all PERMANOVA F-values
+
+```{r plot_Fvalue}
+tab1 <- aggregate(Fvalue~nsample+method, data=tab_Fmodel, 
+                  FUN=mean)
+names(tab1)[3] <- "mean"
+tab2 <- aggregate(Fvalue~nsample+method, data=tab_Fmodel, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[3] <- "se"
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_Fmodel_summary <- merge(tab1, tab2)
+
+color_method <- c("#ff7f00", #orange for Bray
+                  "#33a02c", #green for CTF
+                  "#bdbdbd", #lightgray for FTSVD
+                  "#0096FF", #blue for microTensor
+                  "#5A5A5A", #gray for TEMPTED
+                  "#7F00FF", #purple for Unifrac
+                  "#e31a1c") #red for unweighted Unifrac
+p_Fmodel_summary <- ggplot(data=tab_Fmodel_summary, 
+                                aes(x=nsample, y=mean, group=method, color=method)) + 
+  geom_line(size=1, position=position_dodge(0.1)) + geom_point(size=2, position=position_dodge(0.1)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=1), 
+                position=position_dodge(0.1), size=1) + 
+  scale_x_continuous(breaks=2:10) + 
+  scale_color_manual(values=color_method) +
+  ylab("PERMANOVA F-value") + xlab("Number of Time Points") + 
+  ggtitle("Sample Level") +
+  theme_bw() + 
+  theme(legend.position = "bottom")
+p_Fmodel_summary
+```
+
+
+
+## Print plot for manuscript
+
+Get legend color for all
+
+```{r get_legend}
+color_method <- c("#ff7f00", #orange for Bray
+                  "#33a02c", #green for CTF
+                  "#bdbdbd", #lightgray for FTSVD
+                  "#0096FF", #blue for microTensor
+                  "#f525dd", #pink for TCAM
+                  "#5A5A5A", #gray for TEMPTED
+                  "#7F00FF", #purple for Unifrac
+                  "#e31a1c") #red for unweighted Unifrac
+mm <- length(color_method)
+tab_lgd <- data.frame(Method=rep(c("Bray-Curtis", "CTF", "FTSVD", "microTensor", "TCAM",
+                               "TEMPTED", "UniFrac","Weighted UniFrac"),4),
+                      value=rnorm(4*mm), time=rep(1:4, each=mm),
+                      Type=c(rep("In-Sample",each=2*mm), rep("Out-of-Sample", each=2*mm)))
+p_lgd <- ggplot(data=tab_lgd, aes(x=time, y=value, color=Method)) + 
+  geom_point(size=2) + geom_line(aes(linetype=Type), size=1) + 
+  scale_color_manual(values=color_method) +
+  theme_bw() +
+  theme(legend.position="bottom") +
+  guides(color = guide_legend(nrow = 2), linetype = guide_legend(nrow = 2))
+p_lgd
+lgd <- get_legend(p_lgd)
+```
+
+```{r plot_all}
+lay <- rbind(c(1,1,2),c(1,1,2),c(1,1,2),c(1,1,2),c(1,1,2),
+             c(3,3,3))
+p_all <- grid.arrange(p_subj_pr + theme(legend.position="none"),
+                      p_Fmodel_summary + theme(legend.position="none"), 
+                      lgd,
+                      layout_matrix=lay)
+ggsave("../figure_table/realsim_ecam.pdf", width=10, height=5, plot=p_all)
+```
+
+
+
+# Plot for Supp Figure A5
+
+Results for rerun of CTF and microTensor with month as time.
+
+## Summarize subject-level ROC and PR
+
+```{r summary_sub_classification2}
+method  <- c("tempted", "ctf2", "micro2", "tcam", "ftsvd")
+measure <- c("roc", "pr")
+classify <- c("glm", "rf")
+
+tab_auc_subj <- NULL
+
+for (ms in measure){
+  for (cls in classify){ 
+    # in sample
+    for (mthd in method){
+      fname <- paste0("result/realsim_ecam_", ms, "_sub_", cls, "_", mthd, ".csv")
+      tab0 <- read.csv(fname, row.names=1)
+      tab0 <- 1-as.matrix(tab0)
+      tab_tmp <- data.frame(auc=as.vector(tab0),
+                      nsample=as.vector(t(matrix(rep(nkeep,nsim),length(nkeep),nsim))),
+                      method=toupper(mthd), measure=toupper(ms), classify=cls,
+                      type="In-Sample")
+      tab_auc_subj <- rbind(tab_auc_subj, tab_tmp)
+    }
+    # out of sample
+    for (mthd in c("tempted", "tcam", "ftsvd")){
+      fname <- paste0("result/realsim_ecam_", ms, "_oos_", cls, "_", mthd, ".csv")
+      tab0 <- read.csv(fname, row.names=1)
+      tab0 <- 1-as.matrix(tab0)
+      tab_tmp <- data.frame(auc=as.vector(tab0),
+                      nsample=as.vector(t(matrix(rep(nkeep,nsim),length(nkeep),nsim))),
+                      method=toupper(mthd), measure=toupper(ms), classify=cls,
+                      type="Out-of-Sample")
+      tab_auc_subj <- rbind(tab_auc_subj, tab_tmp)
+    }
+  }  
+}
+tab_auc_subj$classify <- gsub("glm", "Logistic Regression", tab_auc_subj$classify)
+tab_auc_subj$classify <- gsub("rf", "Random Forest", tab_auc_subj$classify)
+tab_auc_subj$method <- gsub("MICROTENSOR", "microTensor", tab_auc_subj$method)
+```
+
+### Plot all subject-level PR
+
+```{r plot_sub_auc2}
+tab_auc_subj$nsample <- as.factor(tab_auc_subj$nsample)
+tab1 <- aggregate(auc~nsample+measure+method+classify+type, data=tab_auc_subj, 
+                  FUN=mean)
+names(tab1)[6] <- "mean"
+tab2 <- aggregate(auc~nsample+measure+method+classify+type, data=tab_auc_subj, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[6] <- "se"
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_auc_subj_summary <- merge(tab1, tab2)
+tab_auc_subj_summary$nsample <- factor(tab_auc_subj_summary$nsample, 
+                                     level=as.character(nkeep))
+
+color_method <- c("#33a02c", #green for CTF
+                  "#bdbdbd", #lightgray for FTSVD
+                  "#0096FF", #blue for microTensor
+                  "#f525dd", #pink for TCAM
+                  "#5A5A5A") #gray for TEMPTED
+
+ann_text <- tab_auc_subj_summary[2,]
+ann_text$mean <- mean(!metauni$delivery_ind)-0.015
+ann_text$nsample <- 6.5
+p_subj_pr2 <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="PR"), 
+                            aes(x=nsample, y=mean, group=paste0(type,method), color=method)) + 
+  geom_line(size=1, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=1) + 
+  geom_hline(yintercept=mean(!metauni$delivery_ind), linetype="dotted", color = "black", size=1) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_wrap(.~classify) +
+  labs(y="AUC-PR Error", x="Number of Time Points")+
+  ggtitle("Subject Level") +
+  scale_color_manual(values=color_method) +
+  theme_bw()
+p_subj_pr2
+```
+
+## Summarize sample-level PERMANOVA F-values
+
+```{r summary_Fvalue2}
+metric_name <- c("Bray-Curtis",
+                 "unweighted_UniFrac", "Weighted_UniFrac")
+# read in results
+Fmodel <- array(0, dim=c(length(metric_name)+4, nsim, length(nkeep)),
+                dimnames=list(c(metric_name, "TEMPTED", "CTF", "microTensor", "FTSVD"), paste0("sim",1:nsim), paste0("nsample=",nkeep)))
+for (ii in 1:length(metric_name)){
+  Fmodel[ii,,] <- as.matrix(read.csv(paste0("result/realsim_ecam_Fvalue_PCoA_", metric_name[ii], ".csv"),
+                           row.names=1))
+}
+for (mthd in c("tempted", "ctf2", "micro2", "ftsvd")){
+  ii <- ii + 1
+  Fmodel[ii,,] <- as.matrix(read.csv(
+    paste0("result/realsim_ecam_Fvalue_", mthd, ".csv"), row.names=1))
+}
+# make table
+tab_Fmodel <- NULL
+for (ii in 1:dim(Fmodel)[1]){
+  tab_tmp <- data.frame(Fvalue=as.vector(Fmodel[ii,,]),
+                        nsample=as.vector(t(matrix(rep(nkeep,nsim),length(nkeep),nsim))),
+                        method=dimnames(Fmodel)[[1]][ii])
+  tab_Fmodel <- rbind(tab_Fmodel, tab_tmp)
+}
+tab_Fmodel$method[tab_Fmodel$method=="unweighted_UniFrac"] <- "UniFrac"
+tab_Fmodel$method[tab_Fmodel$method=="Weighted_UniFrac"] <- "Weighted UniFrac"
+```
+
+### Plot all PERMANOVA F-values
+
+```{r plot_Fvalue2}
+tab1 <- aggregate(Fvalue~nsample+method, data=tab_Fmodel, 
+                  FUN=mean)
+names(tab1)[3] <- "mean"
+tab2 <- aggregate(Fvalue~nsample+method, data=tab_Fmodel, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[3] <- "se"
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_Fmodel_summary <- merge(tab1, tab2)
+
+color_method <- c("#ff7f00", #orange for Bray
+                  "#33a02c", #green for CTF
+                  "#bdbdbd", #lightgray for FTSVD
+                  "#0096FF", #blue for microTensor
+                  "#5A5A5A", #gray for TEMPTED
+                  "#7F00FF", #purple for Unifrac
+                  "#e31a1c") #red for unweighted Unifrac
+p_Fmodel_summary2 <- ggplot(data=tab_Fmodel_summary, 
+                                aes(x=nsample, y=mean, group=method, color=method)) + 
+  geom_line(size=1, position=position_dodge(0.1)) + geom_point(size=2, position=position_dodge(0.1)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=1), 
+                position=position_dodge(0.1), size=1) + 
+  scale_x_continuous(breaks=2:10) + 
+  scale_color_manual(values=color_method) +
+  ylab("PERMANOVA F-value") + xlab("Number of Time Points") + 
+  ggtitle("Sample Level") +
+  theme_bw() + 
+  theme(legend.position = "bottom")
+p_Fmodel_summary2
+```
+
+## Print plot for manuscript
+
+Get legend color for all
+
+```{r get_legend2}
+color_method <- c("#ff7f00", #orange for Bray
+                  "#33a02c", #green for CTF
+                  "#bdbdbd", #lightgray for FTSVD
+                  "#0096FF", #blue for microTensor
+                  "#f525dd", #pink for TCAM
+                  "#5A5A5A", #gray for TEMPTED
+                  "#7F00FF", #purple for Unifrac
+                  "#e31a1c") #red for unweighted Unifrac
+mm <- length(color_method)
+tab_lgd2 <- data.frame(Method=rep(c("Bray-Curtis", "CTF_month", "FTSVD", "microTensor_month", "TCAM",
+                               "TEMPTED", "UniFrac","Weighted UniFrac"),4),
+                      value=rnorm(4*mm), time=rep(1:4, each=mm),
+                      Type=c(rep("In-Sample",each=2*mm), rep("Out-of-Sample", each=2*mm)))
+p_lgd2 <- ggplot(data=tab_lgd2, aes(x=time, y=value, color=Method)) + 
+  geom_point(size=2) + geom_line(aes(linetype=Type), size=1) + 
+  scale_color_manual(values=color_method) +
+  theme_bw() +
+  theme(legend.position="bottom") +
+  guides(color = guide_legend(nrow = 2), linetype = guide_legend(nrow = 2))
+p_lgd2
+lgd2 <- get_legend(p_lgd2)
+```
+
+```{r plot_all2}
+lay <- rbind(c(1,1,2),c(1,1,2),c(1,1,2),c(1,1,2),c(1,1,2),
+             c(3,3,3))
+p_all <- grid.arrange(p_subj_pr2 + theme(legend.position="none"),
+                      p_Fmodel_summary2 + theme(legend.position="none"), 
+                      lgd2,
+                      layout_matrix=lay)
+ggsave("../figure_table/realsim_ecam_rerun.pdf", width=10, height=5, plot=p_all)
+```
+
+
+# Pseudo count sensitivity analysis
+
+
+Save subject loading and trajectory
+
+```{r run_tempted_pseudo, eval=FALSE}
+smooth <- c(1, 0.1, 0.01, 0.005, rep(1e-4, 5))
+for (psd in c(0.1,1)){
+  for (ss in 1:nsim){
+    print(ss)
+    for (jj in 1:length(nkeep)){
+      meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+      count_sub <- count_tab[rownames(meta_sub),]
+      meta_sub$studyid <- as.character(meta_sub$studyid)
+      meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+      metauni <- unique(meta_sub[,c("studyid", "delivery_ind")])
+      subdata <- format_tempted(count_sub, meta_sub$day_of_life, meta_sub$studyid, 
+                              threshold=0.95, pseudo=psd,
+                              transform="clr")
+      # run tempted with all subjects
+      svd_sub <- svd_centralize(subdata)
+      res_tempted <- tempted(svd_sub$datlist, r = npc, 
+                             resolution = (nkeep[jj]+16)*2, smooth=smooth[jj])
+      # sample trajectory
+      agg_feat <- aggregate_feature(res_tempted, NULL, subdata)
+      aggfeat_mat <- reshape(agg_feat$metafeature_aggregate[,1:4],
+                             idvar=c("subID","timepoint") ,
+                             v.names=c("value"), timevar="PC",
+                             direction="wide")
+      colnames(aggfeat_mat)[1] <- "studyid"
+      aggfeat_mat <- merge(aggfeat_mat, metauni, by="studyid")
+      aggfeat_mat[,2+1:npc] <- apply(aggfeat_mat[,2+1:npc], 2, scale)
+      # subject loading
+      tempted_sub <- as.data.frame(res_tempted$A_hat)
+      tempted_sub$`intercept` <- svd_sub$A_tilde
+      tempted_sub$studyid <- rownames(tempted_sub)
+      tempted_sub <- merge(metauni, tempted_sub)
+  
+      write.csv(aggfeat_mat, 
+                file=paste0("simresult_tempted/tempted_traj_sim",ss,"_ntime",nkeep[jj], "_add", psd, ".csv"))
+      write.csv(tempted_sub, 
+                file=paste0("simresult_tempted/tempted_subj_sim",ss,"_ntime",nkeep[jj], "_add", psd, ".csv"))
+    }
+  }
+}
+
+```
+
+## Sample-level PERMANOVA F-value
+
+```{r tempted_sample_Fvalue_pseudo, eval=FALSE}
+for (psd in c(0.1,1)){
+  method <- "tempted"
+  Fmodel_tempted <- matrix(NA, nsim, length(nkeep))
+  colnames(Fmodel_tempted) <- paste0("nsample", nkeep)
+  for (ss in 1:nsim){
+    print(ss)
+    for (jj in 1:length(nkeep)){
+      fname <- paste0(method,"_traj_sim",ss,"_ntime",nkeep[jj], "_add", psd, ".csv")
+      aggfeat_mat <- read.csv(file.path(paste0("simresult_", method), fname), row.names=1)
+      # calculate PERMANOVA F
+      dist_aggft <- vegdist(aggfeat_mat[,2+1:npc], method="euclidean")
+      res_perm <- adonis2(dist_aggft ~ aggfeat_mat$delivery)
+      Fmodel_tempted[ss,jj] <- res_perm$F[1]
+    }
+  }
+  
+  write.csv(Fmodel_tempted, 
+            file=paste0("result/realsim_ecam_Fvalue_", method, "_add", psd, ".csv"))
+}
+
+```
+
+## Subject-level in-sample
+
+-   logistic regression
+-   random forest
+
+```{r tempted_subj_insample_auc_pseudo, eval=FALSE}
+method <- "tempted"
+for (psd in c(0.1,1)){
+  roc_sub_glm_tempted <- matrix(NA, nsim, length(nkeep))
+  colnames(roc_sub_glm_tempted) <- paste0("nsample", nkeep)
+  pr_sub_rf_tempted <- roc_sub_rf_tempted <- pr_sub_glm_tempted <- roc_sub_glm_tempted
+  for (ss in 1:nsim){
+    print(ss)
+    for (jj in 1:length(nkeep)){
+      fname <- paste0(method, "_subj_sim",ss,"_ntime",nkeep[jj], "_add", psd, ".csv")
+      tempted_sub <- read.csv(file.path("simresult_tempted", fname), row.names=1)
+      # glm
+      predprob_glm <- rep(NA, nrow(tempted_sub))
+      for (ii in 1:nrow(tempted_sub)){
+        glm_fit <- glm(delivery_ind ~ PC1+PC2,
+                     data = tempted_sub[-ii,], family = "binomial")
+        predprob_glm[ii] <- predict(glm_fit, newdata=tempted_sub[ii,], type = "response")
+      }
+      roc_sub_glm_tempted[ss,jj] <- roc.curve(predprob_glm[tempted_sub$delivery_ind], 
+                                          predprob_glm[!tempted_sub$delivery_ind])$auc
+      pr_sub_glm_tempted[ss,jj] <- pr.curve(predprob_glm[tempted_sub$delivery_ind], 
+                                        predprob_glm[!tempted_sub$delivery_ind])$auc.integral
+      # random forest
+      set.seed(0)
+      rf_fit <- randomForest(as.factor(delivery_ind) ~ PC1+PC2,
+                     data = tempted_sub, strata=as.factor(delivery_ind))
+      predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+      roc_sub_rf_tempted[ss,jj] <- roc.curve(predprob_rf[tempted_sub$delivery_ind], 
+                                          predprob_rf[!tempted_sub$delivery_ind])$auc
+      pr_sub_rf_tempted[ss,jj] <- pr.curve(predprob_rf[tempted_sub$delivery_ind], 
+                                predprob_rf[!tempted_sub$delivery_ind])$auc.integral
+    }
+  }
+  
+  write.csv(roc_sub_glm_tempted, 
+            file=paste0("result/realsim_ecam_roc_sub_glm_", method, "_add", psd, ".csv"))
+  write.csv(pr_sub_glm_tempted, 
+            file=paste0("result/realsim_ecam_pr_sub_glm_", method, "_add", psd, ".csv"))
+  write.csv(roc_sub_rf_tempted, 
+            file=paste0("result/realsim_ecam_roc_sub_rf_", method, "_add", psd, ".csv"))
+  write.csv(pr_sub_rf_tempted, 
+            file=paste0("result/realsim_ecam_pr_sub_rf_", method, "_add", psd, ".csv"))
+}
+```
+
+## Plot for Supp Figure A1
+
+### F-values
+
+Summarize into table.
+
+```{r summary_Fvalue_pseudo}
+# read in results
+pseudo_vec <- c("_add0.1", "", "_add1")
+Fmodel_pseudo <- array(0, dim=c(3, nsim, length(nkeep)),
+                dimnames=list(c("Add 0.1", "Add 0.5", "Add 1"), paste0("sim",1:nsim), paste0("nsample=",nkeep)))
+
+for (ii in 1:length(pseudo_vec)){
+  Fmodel_tempted <- read.csv(paste0("result/realsim_ecam_Fvalue_tempted", pseudo_vec[ii], ".csv"), row.names=1)
+  Fmodel_pseudo[ii,,] <- as.matrix(Fmodel_tempted)
+}
+
+# make table
+tab_Fmodel_pseudo <- NULL
+for (ii in 1:dim(Fmodel_pseudo)[1]){
+  tab_tmp <- data.frame(Fvalue=as.vector(Fmodel_pseudo[ii,,]),
+                        nsample=as.vector(t(matrix(rep(nkeep,nsim),length(nkeep),nsim))),
+                        pseudo=dimnames(Fmodel_pseudo)[[1]][ii])
+  tab_Fmodel_pseudo <- rbind(tab_Fmodel_pseudo, tab_tmp)
+}
+```
+
+Plot comparison.
+
+```{r plot_Fvalue_pseudo}
+tab1 <- aggregate(Fvalue~nsample+pseudo, data=tab_Fmodel_pseudo, 
+                  FUN=mean)
+names(tab1)[3] <- "mean"
+tab2 <- aggregate(Fvalue~nsample+pseudo, data=tab_Fmodel_pseudo, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[3] <- "se"
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_Fmodel_pseudo_summary <- merge(tab1, tab2)
+
+p_Fmodel_pseudo_summary <- ggplot(data=tab_Fmodel_pseudo_summary, 
+                                aes(x=nsample, y=mean, group=pseudo, color=pseudo)) + 
+  geom_line(size=0.8, position=position_dodge(0.1)) + geom_point(size=1.2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=1), 
+                position=position_dodge(0.5), size=0.8) + 
+  scale_x_continuous(breaks=2:10) +
+  labs(y="PERMANOVA F-value", x="Number of Time Points", 
+       title="Sample Level", color="Pseudo Count", group="Pseudo Count") +
+  theme_bw() + 
+  theme(legend.position = "right")
+p_Fmodel_pseudo_summary
+```
+
+
+### PR-AUC
+
+Summarize into table.
+
+```{r summary_sub_classification_pseudo}
+pseudo_vec <- c("_add0.1", "", "_add1")
+measure <- c("roc", "pr")
+classify <- c("glm", "rf")
+
+tab_auc_subj_pseudo <- NULL
+
+for (ms in measure){
+  for (cls in classify){ 
+    # in sample
+    for (psd in pseudo_vec){
+      fname <- paste0("result/realsim_ecam_", ms, "_sub_", cls, "_tempted", psd, ".csv")
+      tab0 <- read.csv(fname, row.names=1)
+      tab0 <- 1-as.matrix(tab0)
+      tab_tmp <- data.frame(auc=as.vector(tab0),
+                      nsample=as.vector(t(matrix(rep(nkeep,nsim),length(nkeep),nsim))),
+                      pseudo=psd, measure=toupper(ms), classify=cls,
+                      type="In-Sample")
+      tab_auc_subj_pseudo <- rbind(tab_auc_subj_pseudo, tab_tmp)
+    }
+  }  
+}
+tab_auc_subj_pseudo$classify <- gsub("glm", "Logistic Regression", tab_auc_subj_pseudo$classify)
+tab_auc_subj_pseudo$classify <- gsub("rf", "Random Forest", tab_auc_subj_pseudo$classify)
+tab_auc_subj_pseudo$pseudo[tab_auc_subj_pseudo$pseudo==""] <- "_add0.5"
+tab_auc_subj_pseudo$pseudo <- paste("Add", substr(tab_auc_subj_pseudo$pseudo,5,10))
+```
+
+Plot comparison.
+
+```{r plot_sub_auc_pseudo}
+tab_auc_subj_pseudo$nsample <- as.factor(tab_auc_subj_pseudo$nsample)
+tab1 <- aggregate(auc~nsample+measure+pseudo+classify+type, data=tab_auc_subj_pseudo, 
+                  FUN=mean)
+names(tab1)[6] <- "mean"
+tab2 <- aggregate(auc~nsample+measure+pseudo+classify+type, data=tab_auc_subj_pseudo, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[6] <- "se"
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_auc_subj_pseudo_summary <- merge(tab1, tab2)
+tab_auc_subj_pseudo_summary$nsample <- factor(tab_auc_subj_pseudo_summary$nsample, 
+                                     level=as.character(nkeep))
+
+
+ann_text <- tab_auc_subj_pseudo_summary[2,]
+ann_text$mean <- 0.5-0.015
+ann_text$nsample <- 6.5
+p_subj_roc_pseudo <- ggplot(data=dplyr::filter(tab_auc_subj_pseudo_summary, measure=="ROC"), 
+                           aes(x=nsample, y=mean, group=pseudo, color=pseudo)) + 
+  geom_line(size=0.8, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=1.2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=0.8) + 
+  geom_hline(yintercept=0.5, linetype="dotted", color = "black", size=0.8) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_wrap(.~classify) +
+  labs(y="AUC-ROC error", x="Number of Time Points", 
+       title="Subject Level", color="Pseudo Count", group="Pseudo Count") +
+  theme_bw() + 
+  theme(legend.position = "none")
+
+ann_text <- tab_auc_subj_pseudo_summary[2,]
+ann_text$mean <- mean(!metauni$delivery_ind)-0.015
+ann_text$nsample <- 6.5
+p_subj_pr_pseudo <- ggplot(data=dplyr::filter(tab_auc_subj_pseudo_summary, measure=="PR"), 
+                            aes(x=nsample, y=mean, group=pseudo, color=pseudo)) + 
+  geom_line(size=0.8, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=1.2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=0.8) + 
+  geom_hline(yintercept=mean(!metauni$delivery_ind), linetype="dotted", color = "black", size=0.8) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_wrap(.~classify) +
+  labs(y="AUC-PR Error", x="Number of Time Points")+
+  ggtitle("Subject Level") +
+  theme_bw() +
+  theme(legend.position = "none")
+p_subj_pr_pseudo
+```
+
+```{r pseudo_plot}
+lay <- rbind(c(1,1,1,1,2,2,2),c(1,1,1,1,2,2,2))
+p_pseudo <- grid.arrange(p_subj_pr_pseudo,
+                      p_Fmodel_pseudo_summary,
+                      layout_matrix=lay)
+ggsave("../figure_table/pseudocount_ecam.pdf", width=10, height=3.5, plot=p_pseudo)
+
+```
+
+
+
+
+
+# Smoothness paramter sensitivity analysis
+
+
+Save subject loading and trajectory
+
+```{r run_tempted_smooth, eval=FALSE}
+smooth <- c(1, 0.1, 0.01, 0.005, 1e-4)
+for (smth in smooth){
+  for (ss in 1:nsim){
+    print(ss)
+    for (jj in 1:length(nkeep)){
+      meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+      count_sub <- count_tab[rownames(meta_sub),]
+      meta_sub$studyid <- as.character(meta_sub$studyid)
+      meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+      metauni <- unique(meta_sub[,c("studyid", "delivery_ind")])
+      subdata <- format_tempted(count_sub, meta_sub$day_of_life, meta_sub$studyid, 
+                              threshold=0.95, pseudo=0.5,
+                              transform="clr")
+      # run tempted with all subjects
+      svd_sub <- svd_centralize(subdata)
+      res_tempted <- tempted(svd_sub$datlist, r = npc, 
+                             resolution = (nkeep[jj]+16)*2, smooth=smth)
+      # sample trajectory
+      agg_feat <- aggregate_feature(res_tempted, NULL, subdata)
+      aggfeat_mat <- reshape(agg_feat$metafeature_aggregate[,1:4],
+                             idvar=c("subID","timepoint") ,
+                             v.names=c("value"), timevar="PC",
+                             direction="wide")
+      colnames(aggfeat_mat)[1] <- "studyid"
+      aggfeat_mat <- merge(aggfeat_mat, metauni, by="studyid")
+      aggfeat_mat[,2+1:npc] <- apply(aggfeat_mat[,2+1:npc], 2, scale)
+      # subject loading
+      tempted_sub <- as.data.frame(res_tempted$A_hat)
+      tempted_sub$`intercept` <- svd_sub$A_tilde
+      tempted_sub$studyid <- rownames(tempted_sub)
+      tempted_sub <- merge(metauni, tempted_sub)
+  
+      write.csv(aggfeat_mat, 
+                file=paste0("simresult_tempted/tempted_traj_sim",ss,"_ntime",nkeep[jj], "_smooth", smth, ".csv"))
+      write.csv(tempted_sub, 
+                file=paste0("simresult_tempted/tempted_subj_sim",ss,"_ntime",nkeep[jj], "_smooth", smth, ".csv"))
+    }
+  }
+}
+
+```
+
+## Sample-level PERMANOVA F-value
+
+```{r tempted_sample_Fvalue_smooth, eval=FALSE}
+for (smth in smooth){
+  method <- "tempted"
+  Fmodel_tempted <- matrix(NA, nsim, length(nkeep))
+  colnames(Fmodel_tempted) <- paste0("nsample", nkeep)
+  for (ss in 1:nsim){
+    print(ss)
+    for (jj in 1:length(nkeep)){
+      fname <- paste0(method,"_traj_sim",ss,"_ntime",nkeep[jj], "_smooth", smth, ".csv")
+      aggfeat_mat <- read.csv(file.path(paste0("simresult_", method), fname), row.names=1)
+      # calculate PERMANOVA F
+      dist_aggft <- vegdist(aggfeat_mat[,2+1:npc], method="euclidean")
+      res_perm <- adonis2(dist_aggft ~ aggfeat_mat$delivery)
+      Fmodel_tempted[ss,jj] <- res_perm$F[1]
+    }
+  }
+  
+  write.csv(Fmodel_tempted, 
+            file=paste0("result/realsim_ecam_Fvalue_", method, "_smooth", smth, ".csv"))
+}
+
+```
+
+## Subject-level in-sample
+
+-   logistic regression
+-   random forest
+
+```{r tempted_subj_insample_auc_smooth, eval=FALSE}
+method <- "tempted"
+for (smth in smooth){
+  roc_sub_glm_tempted <- matrix(NA, nsim, length(nkeep))
+  colnames(roc_sub_glm_tempted) <- paste0("nsample", nkeep)
+  pr_sub_rf_tempted <- roc_sub_rf_tempted <- pr_sub_glm_tempted <- roc_sub_glm_tempted
+  for (ss in 1:nsim){
+    print(ss)
+    for (jj in 1:length(nkeep)){
+      fname <- paste0(method, "_subj_sim",ss,"_ntime",nkeep[jj], "_smooth", smth, ".csv")
+      tempted_sub <- read.csv(file.path("simresult_tempted", fname), row.names=1)
+      # glm
+      predprob_glm <- rep(NA, nrow(tempted_sub))
+      for (ii in 1:nrow(tempted_sub)){
+        glm_fit <- glm(delivery_ind ~ PC1+PC2,
+                     data = tempted_sub[-ii,], family = "binomial")
+        predprob_glm[ii] <- predict(glm_fit, newdata=tempted_sub[ii,], type = "response")
+      }
+      roc_sub_glm_tempted[ss,jj] <- roc.curve(predprob_glm[tempted_sub$delivery_ind], 
+                                          predprob_glm[!tempted_sub$delivery_ind])$auc
+      pr_sub_glm_tempted[ss,jj] <- pr.curve(predprob_glm[tempted_sub$delivery_ind], 
+                                        predprob_glm[!tempted_sub$delivery_ind])$auc.integral
+      # random forest
+      set.seed(0)
+      rf_fit <- randomForest(as.factor(delivery_ind) ~ PC1+PC2,
+                     data = tempted_sub, strata=as.factor(delivery_ind))
+      predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+      roc_sub_rf_tempted[ss,jj] <- roc.curve(predprob_rf[tempted_sub$delivery_ind], 
+                                          predprob_rf[!tempted_sub$delivery_ind])$auc
+      pr_sub_rf_tempted[ss,jj] <- pr.curve(predprob_rf[tempted_sub$delivery_ind], 
+                                predprob_rf[!tempted_sub$delivery_ind])$auc.integral
+    }
+  }
+  
+  write.csv(roc_sub_glm_tempted, 
+            file=paste0("result/realsim_ecam_roc_sub_glm_", method, "_smooth", smth, ".csv"))
+  write.csv(pr_sub_glm_tempted, 
+            file=paste0("result/realsim_ecam_pr_sub_glm_", method, "_smooth", smth, ".csv"))
+  write.csv(roc_sub_rf_tempted, 
+            file=paste0("result/realsim_ecam_roc_sub_rf_", method, "_smooth", smth, ".csv"))
+  write.csv(pr_sub_rf_tempted, 
+            file=paste0("result/realsim_ecam_pr_sub_rf_", method, "_smooth", smth, ".csv"))
+}
+```
+
+## Plot for Supp Figure A2
+
+### F-values
+
+Summarize into table.
+
+```{r summary_Fvalue_smooth}
+smooth <- c(1, 0.1, 0.01, 0.005, 1e-4)
+# read in results
+Fmodel_smooth <- array(0, dim=c(length(smooth), nsim, length(nkeep)),
+                dimnames=list(paste("C_K =", smooth), paste0("sim",1:nsim), paste0("nsample=",nkeep)))
+
+for (ii in 1:length(smooth)){
+  Fmodel_tempted <- read.csv(paste0("result/realsim_ecam_Fvalue_tempted", "_smooth", smooth[ii], ".csv"), row.names=1)
+  Fmodel_smooth[ii,,] <- as.matrix(Fmodel_tempted)
+}
+
+# make table
+tab_Fmodel_smooth <- NULL
+for (ii in 1:dim(Fmodel_smooth)[1]){
+  tab_tmp <- data.frame(Fvalue=as.vector(Fmodel_smooth[ii,,]),
+                        nsample=as.vector(t(matrix(rep(nkeep,nsim),length(nkeep),nsim))),
+                        smooth=dimnames(Fmodel_smooth)[[1]][ii])
+  tab_Fmodel_smooth <- rbind(tab_Fmodel_smooth, tab_tmp)
+}
+```
+
+Plot comparison.
+
+```{r plot_Fvalue_smooth}
+tab1 <- aggregate(Fvalue~nsample+smooth, data=tab_Fmodel_smooth, 
+                  FUN=mean)
+names(tab1)[3] <- "mean"
+tab2 <- aggregate(Fvalue~nsample+smooth, data=tab_Fmodel_smooth, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[3] <- "se"
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_Fmodel_smooth_summary <- merge(tab1, tab2)
+tab_Fmodel_smooth_summary$smooth <- factor(tab_Fmodel_smooth_summary$smooth, levels=paste("C_K =", smooth))
+
+p_Fmodel_smooth_summary <- ggplot(data=tab_Fmodel_smooth_summary, 
+                                aes(x=nsample, y=mean, group=smooth, color=smooth)) + 
+  geom_line(size=0.8, position=position_dodge(0.5)) + geom_point(size=1.2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=1), 
+                position=position_dodge(0.5), size=0.8) + 
+  scale_x_continuous(breaks=2:10) +
+  labs(y="PERMANOVA F-value", x="Number of Time Points", 
+       title="Sample Level", color="Value of C_K", group="Value of C_K") +
+  theme_bw() + 
+  theme(legend.position = "right")
+p_Fmodel_smooth_summary
+```
+
+
+### PR-AUC
+
+Summarize into table.
+
+```{r summary_sub_classification_smooth}
+measure <- c("roc", "pr")
+classify <- c("glm", "rf")
+
+tab_auc_subj_smooth <- NULL
+
+for (ms in measure){
+  for (cls in classify){ 
+    # in sample
+    for (smth in smooth){
+      fname <- paste0("result/realsim_ecam_", ms, "_sub_", cls, "_tempted", "_smooth", smth, ".csv")
+      tab0 <- read.csv(fname, row.names=1)
+      tab0 <- 1-as.matrix(tab0)
+      tab_tmp <- data.frame(auc=as.vector(tab0),
+                      nsample=as.vector(t(matrix(rep(nkeep,nsim),length(nkeep),nsim))),
+                      smooth=smth, measure=toupper(ms), classify=cls,
+                      type="In-Sample")
+      tab_auc_subj_smooth <- rbind(tab_auc_subj_smooth, tab_tmp)
+    }
+  }  
+}
+tab_auc_subj_smooth$classify <- gsub("glm", "Logistic Regression", tab_auc_subj_smooth$classify)
+tab_auc_subj_smooth$classify <- gsub("rf", "Random Forest", tab_auc_subj_smooth$classify)
+tab_auc_subj_smooth$smooth <- paste("C_K =", tab_auc_subj_smooth$smooth)
+```
+
+Plot comparison.
+
+```{r plot_sub_auc_smooth}
+tab_auc_subj_smooth$nsample <- as.factor(tab_auc_subj_smooth$nsample)
+tab1 <- aggregate(auc~nsample+measure+smooth+classify+type, data=tab_auc_subj_smooth, 
+                  FUN=mean)
+names(tab1)[6] <- "mean"
+tab2 <- aggregate(auc~nsample+measure+smooth+classify+type, data=tab_auc_subj_smooth, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[6] <- "se"
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_auc_subj_smooth_summary <- merge(tab1, tab2)
+tab_auc_subj_smooth_summary$nsample <- factor(tab_auc_subj_smooth_summary$nsample, 
+                                     level=as.character(nkeep))
+tab_auc_subj_smooth_summary$smooth <- factor(tab_auc_subj_smooth_summary$smooth, levels=paste("C_K =", smooth))
+
+
+ann_text <- tab_auc_subj_smooth_summary[2,]
+ann_text$mean <- 0.5-0.015
+ann_text$nsample <- 6.5
+p_subj_roc_smooth <- ggplot(data=dplyr::filter(tab_auc_subj_smooth_summary, measure=="ROC"), 
+                           aes(x=nsample, y=mean, group=smooth, color=smooth)) + 
+  geom_line(size=0.8, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=1.2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=0.8) + 
+  geom_hline(yintercept=0.5, linetype="dotted", color = "black", size=0.8) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_wrap(.~classify) +
+  labs(y="AUC-ROC error", x="Number of Time Points", 
+       title="Subject Level", color="Value of C_K", group="Value of C_K") +
+  theme_bw() + 
+  theme(legend.position = "none")
+
+ann_text <- tab_auc_subj_smooth_summary[2,]
+ann_text$mean <- mean(!metauni$delivery_ind)-0.015
+ann_text$nsample <- 6.5
+p_subj_pr_smooth <- ggplot(data=dplyr::filter(tab_auc_subj_smooth_summary, measure=="PR"), 
+                            aes(x=nsample, y=mean, group=smooth, color=smooth)) + 
+  geom_line(size=0.8, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=1.2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=0.8) + 
+  geom_hline(yintercept=mean(!metauni$delivery_ind), linetype="dotted", color = "black", size=0.8) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_wrap(.~classify) +
+  labs(y="AUC-PR Error", x="Number of Time Points")+
+  ggtitle("Subject Level") +
+  theme_bw() +
+  theme(legend.position = "none")
+p_subj_pr_smooth
+```
+
+```{r smooth_plot}
+lay <- rbind(c(1,1,1,1,2,2,2),c(1,1,1,1,2,2,2))
+p_smooth <- grid.arrange(p_subj_pr_smooth,
+                      p_Fmodel_smooth_summary,
+                      layout_matrix=lay)
+ggsave("../figure_table/smoothpara_ecam.pdf", width=10, height=3.5, plot=p_smooth)
+
+```
+
+
+# Reconstruction error
+
+Run dimension reduction for No. of time point = 9. Reconstruct for rank ranging from 1 to 10
+
+
+## TEMPTED
+
+
+```{r reconstruction_setting}
+# Function to reconstruct tensor from tempted
+reconstruct <- function(res_tempted, res_svd=NULL, datlist=NULL, r_reconstruct = NULL){
+  n <- max(length(res_svd$datlist), length(datlist))
+  if (n==0) {
+    stop("One of res_svd or datlist needs to be feeded.")
+  }
+  datlist_est <- vector(mode='list', length=n)
+  
+  r <- length(res_tempted$Lambda)
+  if (r < r_reconstruct){
+    r_reconstruct <- min(r, r_reconstruct)
+    print("r_reconstruct is larger than the fitted rank. Used the available ranks instead.")
+  }
+  
+  rec1 <- lapply(seq(1, r_reconstruct), function(s) {
+    res_tempted$Lambda[s] * res_tempted$A_hat[, s] %o% res_tempted$B_hat[, s] %o% res_tempted$Phi[, s]
+  })
+  Yhat <- Reduce("+", rec1)
+  
+  if (!is.null(res_svd)){
+    rec2 <- lapply(seq(1, length(res_svd$lambda_tilde)), function(s) {
+      res_svd$lambda_tilde[s] * res_svd$A_tilde[, s] %o% res_svd$B_tilde[, s]
+    })
+    Ymean <- Reduce("+", rec2)
+    for (ii in 1:n){
+      datlist_est[[ii]] <- res_svd$datlist[[ii]]
+      ti <- 1 + round((length(res_tempted$time_Phi)-1) * (res_svd$datlist[[ii]][1,] - res_tempted$time_Phi[1]) / (tail(res_tempted$time_Phi,1) - res_tempted$time_Phi[1]))
+      datlist_est[[ii]][-1,] <- Yhat[ii,,ti] + Ymean[ii,]
+    }
+  }else{
+    for (ii in 1:n){
+      datlist_est[[ii]] <- datlist[[ii]]
+      ti <- 1 + round((length(res_tempted$time_Phi)-1) * (datlist[[ii]][1,] - res_tempted$time_Phi[1]) / (tail(res_tempted$time_Phi,1) - res_tempted$time_Phi[1]))
+      datlist_est[[ii]][-1,] <- Yhat[ii,,ti]
+    }
+  }
+  return(datlist_est)
+}
+```
+
+
+
+```{r reconstruct_tempted, eval=FALSE}
+rmax <- 10
+smooth <- c(1, 0.1, 0.01, 0.005, rep(1e-4, 5))
+R2_tempted_mean <- R2_tempted_nomean <- matrix(0, nsim, rmax)
+for (ss in 1:nsim){
+  print(ss)
+  jj <- 8
+  meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+  count_sub <- count_tab[rownames(meta_sub),]
+  meta_sub$studyid <- as.character(meta_sub$studyid)
+  meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+  metauni <- unique(meta_sub[,c("studyid", "delivery_ind")])
+  subdata <- format_tempted(count_sub, meta_sub$day_of_life, meta_sub$studyid, 
+                          threshold=0.95, pseudo=0.5,
+                          transform="clr")
+  vec_obs <- sapply(subdata, function(x){x[-1,]})
+  # with mean subtraction
+  svd_sub <- svd_centralize(subdata)
+  res_tempted_mean <- tempted(svd_sub$datlist, r = rmax, 
+                         resolution = 101, smooth=smooth[jj])
+  for (r in 1:rmax){
+    subdata_est_mean <- reconstruct(res_tempted_mean, svd_sub, r_reconstruct=r)
+    vec_est_mean <- sapply(subdata_est_mean, function(x){x[-1,]})
+    R2_tempted_mean[ss,r] <- 1-sum((vec_est_mean-vec_obs)^2)/sum(vec_obs^2)
+  }
+  # without mean subtraction
+  res_tempted_nomean <- tempted(subdata, r = rmax, 
+                         resolution = 101, smooth=smooth[jj])
+  for (r in 1:rmax){
+    subdata_est_nomean <- reconstruct(res_tempted_nomean, res_svd=NULL, datlist=subdata, r_reconstruct=r)
+    vec_est_nomean <- sapply(subdata_est_nomean, function(x){x[-1,]})
+    R2_tempted_nomean[ss,r] <- 1-sum((vec_est_nomean-vec_obs)^2)/sum(vec_obs^2)
+  }
+  if (ss%%10==0){
+    write.csv(R2_tempted_nomean, file=paste0("result/ecam_reconstruction_tempted_nomean_ntime", nkeep[jj], ".csv"))
+    write.csv(R2_tempted_mean, file=paste0("result/ecam_reconstruction_tempted_mean_ntime", nkeep[jj], ".csv"))
+  }
+}
+```
+
+## FTSVD 
+
+```{r reconstruct_ftsvd, eval=FALSE}
+rmax <- 10
+R2_ftsvd_mean <- R2_ftsvd_nomean <- matrix(0, nsim, rmax)
+for (ss in 1:nsim){
+  print(ss)
+  jj <- 8
+  meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+  count_sub <- count_tab[rownames(meta_sub),]
+  meta_sub$studyid <- as.character(meta_sub$studyid)
+  meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+  metauni <- unique(meta_sub[,c("studyid", "delivery_ind")])
+  subdata <- format_tempted(count_sub, meta_sub$visit, meta_sub$studyid, 
+                          threshold=0.95, pseudo=0.5,
+                          transform="clr")
+  vec_obs <- sapply(subdata, function(x){x[-1,]})
+  # with mean subtraction
+  svd_sub <- svd_centralize(subdata)
+  res_ftsvd_mean <- tempted(svd_sub$datlist, r = rmax, 
+                         resolution = 101, smooth=1e-4)
+  for (r in 1:rmax){
+    subdata_est_mean <- reconstruct(res_ftsvd_mean, svd_sub, r_reconstruct=r)
+    vec_est_mean <- sapply(subdata_est_mean, function(x){x[-1,]})
+    R2_ftsvd_mean[ss,r] <- 1-sum((vec_est_mean-vec_obs)^2)/sum(vec_obs^2)
+  }
+  # without mean subtraction
+  res_ftsvd_nomean <- tempted(subdata, r = rmax, 
+                         resolution = 101, smooth=smooth[jj])
+  for (r in 1:rmax){
+    subdata_est_nomean <- reconstruct(res_ftsvd_nomean, res_svd=NULL, datlist=subdata, r_reconstruct=r)
+    vec_est_nomean <- sapply(subdata_est_nomean, function(x){x[-1,]})
+    R2_ftsvd_nomean[ss,r] <- 1-sum((vec_est_nomean-vec_obs)^2)/sum(vec_obs^2)
+  }
+  if (ss%%10==0){
+    write.csv(R2_tempted_nomean, file=paste0("result/ecam_reconstruction_ftsvd_nomean_ntime", nkeep[jj], ".csv"))
+    write.csv(R2_tempted_mean, file=paste0("result/ecam_reconstruction_ftsvd_mean_ntime", nkeep[jj], ".csv"))
+  }
+}
+```
+## CTF
+
+```{r reconstruct_ctf, eval=FALSE}
+py_run_file(file="run_ecam_ctf_reconstruct.py",convert=F)
+```
+
+
+## Plot for Supp Figure A3
+
+```{r reconstruct_summary}
+fname <- c("ctf_nomean", "tempted_nomean", "tempted_mean", "ftsvd_nomean", "ftsvd_mean")
+tab_R2 <- NULL
+for (ii in 1:length(fname)){
+  R2_csv <- read.csv(paste0("result/ecam_reconstruction_", fname[ii], "_ntime9.csv"), header=T, row.names = 1)
+  mthd <- toupper(strsplit(fname[ii], "_")[[1]][1])
+  mean_subtract <- ifelse(strsplit(fname[ii], "_")[[1]][2]=="mean", "Yes", "No")
+  if(is.na(mean_subtract)) mean_subtract <- "No"
+  tab_R2_tmp <- tidyr::pivot_longer(R2_csv, cols=1:10, names_to="rank") %>%
+    mutate(method=mthd, 
+           mean_subtract=mean_subtract, 
+           rank=as.numeric(substr(rank, 2, 4)))
+  tab_R2 <- rbind(tab_R2, tab_R2_tmp)
+}
+
+tab1 <- aggregate(value~rank+method+mean_subtract, data=tab_R2, 
+                  FUN=mean)
+names(tab1)[4] <- "mean"
+tab2 <- aggregate(value~rank+method+mean_subtract, data=tab_R2, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[4] <- "se"
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_R2_summary <- merge(tab1, tab2)
+tab_R2_summary$mean_subtract <- factor(tab_R2_summary$mean_subtract, levels=c("Yes", "No"))
+tab_R2_summary <- tab_R2_summary %>%
+  mutate(normalization = ifelse(method=="CTF", "rclr", "clr"), wd=0.5)
+```
+
+
+```{r reconstruct_plot}
+color_method <- c("#33a02c", #green for CTF
+                  "#bdbdbd", # lightgray for FTSVD
+                  #"#0096FF", #blue for microTensor
+                  "#5A5A5A") #gray for TEMPTED  
+p_R2_summary <- ggplot(data=tab_R2_summary, 
+                                aes(x=rank, y=1-mean, group=interaction(method, mean_subtract), color=method, linetype=mean_subtract)) + 
+  geom_line(size=1, position=position_dodge(0.1)) + geom_point(size=2, position=position_dodge(0.1)) +
+  geom_errorbar(aes(ymin=1-mean-2*se, ymax=1-mean+2*se, width=wd), 
+                #position=position_dodge(0.1), 
+                size=1) + 
+  theme_bw() + 
+  scale_x_continuous(breaks=1:10) + 
+  scale_color_manual(values=color_method) +
+  facet_wrap(~ normalization, scales = "free_y") +
+  theme(strip.background = element_blank(),
+  strip.text.x = element_blank()) +
+  labs(y="Tensor Reconstruction Error", 
+       x="Number of Components",
+       color="Method",
+       linetype="Mean Subtraction") + 
+  theme(legend.position = "bottom")
+
+p_R2_summary
+
+
+pdf("../figure_table/reconstruction_ecam.pdf", width=5.5, height=5)
+print(p_R2_summary)
+dev.off()
+```
+
+
+
+# TEMPTED without mean subtraction
+
+## Run TEMPTED
+
+Save subject loading and trajectory
+
+```{r run_tempted_nomean, eval=FALSE}
+smooth <- c(1, 0.1, 0.01, 0.005, rep(1e-4, 5))
+
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    count_sub <- count_tab[rownames(meta_sub),]
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    metauni <- unique(meta_sub[,c("studyid", "delivery_ind")])
+    subdata <- format_tempted(count_sub, meta_sub$day_of_life, meta_sub$studyid, 
+                            threshold=0.95, pseudo=0.5,
+                            transform="clr")
+    # run tempted with all subjects
+    res_tempted <- tempted(subdata, r = 3, 
+                           resolution = (nkeep[jj]+16)*2, smooth=smooth[jj])
+    # sample trajectory
+    agg_feat <- aggregate_feature(res_tempted, NULL, subdata)
+    aggfeat_mat <- reshape(agg_feat$metafeature_aggregate[,1:4],
+                           idvar=c("subID","timepoint") ,
+                           v.names=c("value"), timevar="PC",
+                           direction="wide")
+    colnames(aggfeat_mat)[1] <- "studyid"
+    aggfeat_mat <- merge(aggfeat_mat, metauni, by="studyid")
+    aggfeat_mat[,2+1:3] <- apply(aggfeat_mat[,2+1:3], 2, scale)
+    # subject loading
+    tempted_sub <- as.data.frame(res_tempted$A_hat)
+    tempted_sub$studyid <- rownames(tempted_sub)
+    tempted_sub <- merge(metauni, tempted_sub)
+
+    write.csv(aggfeat_mat, 
+              file=paste0("simresult_tempted/tempted_traj_sim",ss,"_ntime",nkeep[jj], "_nomean3.csv"))
+    write.csv(tempted_sub, 
+              file=paste0("simresult_tempted/tempted_subj_sim",ss,"_ntime",nkeep[jj], "_nomean3.csv"))
+  }
+}
+
+```
+
+## Sample-level
+
+### PERMANOVA F-value
+
+```{r tempted_sample_Fvalue_nomean, eval=FALSE}
+method <- "tempted"
+Fmodel_tempted <- matrix(NA, nsim, length(nkeep))
+colnames(Fmodel_tempted) <- paste0("nsample", nkeep)
+for (npc in c(2:3)){
+  for (ss in 1:nsim){
+    print(ss)
+    for (jj in 1:length(nkeep)){
+      fname <- paste0(method,"_traj_sim",ss,"_ntime",nkeep[jj], "_nomean3.csv")
+      aggfeat_mat <- read.csv(file.path(paste0("simresult_", method), fname), row.names=1)
+      # calculate PERMANOVA F
+      dist_aggft <- vegdist(aggfeat_mat[,2+1:npc], method="euclidean")
+      res_perm <- adonis2(dist_aggft ~ aggfeat_mat$delivery)
+      Fmodel_tempted[ss,jj] <- res_perm$F[1]
+    }
+  }
+  write.csv(Fmodel_tempted, 
+          file=paste0("result/realsim_ecam_Fvalue_", method, "_nomean", npc, ".csv"))
+}
+
+
+```
+
+## Subject-level
+
+### In-sample ROC & PR
+
+-   logistic regression
+-   random forest
+
+```{r tempted_subj_insample_auc_nomean, eval=FALSE}
+for (npc in c(2:3)){
+  method <- "tempted"
+  roc_sub_glm_tempted <- matrix(NA, nsim, length(nkeep))
+  colnames(roc_sub_glm_tempted) <- paste0("nsample", nkeep)
+  pr_sub_rf_tempted <- roc_sub_rf_tempted <- pr_sub_glm_tempted <- roc_sub_glm_tempted
+  fmlr <- paste("delivery_ind ~", paste0("PC", 1:npc, collapse="+"))
+  fmlr2 <- paste("delivery_fac ~", paste0("PC", 1:npc, collapse="+"))
+  for (ss in 1:nsim){
+    print(ss)
+    for (jj in 1:length(nkeep)){
+      fname <- paste0(method, "_subj_sim",ss,"_ntime",nkeep[jj], "_nomean3.csv")
+      tempted_sub <- read.csv(file.path("simresult_tempted", fname), row.names=1)
+      tempted_sub$delivery_fac <- as.factor(tempted_sub$delivery_ind)
+      # glm
+      predprob_glm <- rep(NA, nrow(tempted_sub))
+      for (ii in 1:nrow(tempted_sub)){
+        glm_fit <- glm(as.formula(fmlr),
+                     data = tempted_sub[-ii,], family = "binomial")
+        predprob_glm[ii] <- predict(glm_fit, newdata=tempted_sub[ii,], type = "response")
+      }
+      roc_sub_glm_tempted[ss,jj] <- roc.curve(predprob_glm[tempted_sub$delivery_ind], 
+                                          predprob_glm[!tempted_sub$delivery_ind])$auc
+      pr_sub_glm_tempted[ss,jj] <- pr.curve(predprob_glm[tempted_sub$delivery_ind], 
+                                        predprob_glm[!tempted_sub$delivery_ind])$auc.integral
+      # random forest
+      set.seed(0)
+      rf_fit <- randomForest(as.formula(fmlr2),
+                     data = tempted_sub, strata=delivery_fac)
+      predprob_rf <- predict(rf_fit, type = "prob")[,"TRUE"]
+      roc_sub_rf_tempted[ss,jj] <- roc.curve(predprob_rf[tempted_sub$delivery_ind], 
+                                          predprob_rf[!tempted_sub$delivery_ind])$auc
+      pr_sub_rf_tempted[ss,jj] <- pr.curve(predprob_rf[tempted_sub$delivery_ind], 
+                                predprob_rf[!tempted_sub$delivery_ind])$auc.integral
+    }
+  }
+  
+  write.csv(roc_sub_glm_tempted, 
+            file=paste0("result/realsim_ecam_roc_sub_glm_", method, "_nomean", npc, ".csv"))
+  write.csv(pr_sub_glm_tempted, 
+            file=paste0("result/realsim_ecam_pr_sub_glm_", method, "_nomean", npc, ".csv"))
+  write.csv(roc_sub_rf_tempted, 
+            file=paste0("result/realsim_ecam_roc_sub_rf_", method, "_nomean", npc, ".csv"))
+  write.csv(pr_sub_rf_tempted, 
+            file=paste0("result/realsim_ecam_pr_sub_rf_", method, "_nomean", npc, ".csv"))
+}
+
+```
+
+
+### Out-of-Sample ROC & PR
+
+-   Logistic regression
+-   Random forest
+
+```{r run_tempted_oos_nomean, eval=FALSE}
+method <- "tempted"
+roc_glm_oos_tempted <- matrix(NA, nsim, length(nkeep))
+colnames(roc_glm_oos_tempted) <- paste0("nsample", nkeep)
+pr_rf_oos_tempted <- roc_rf_oos_tempted <- 
+  pr_glm_oos_tempted <- roc_glm_oos_tempted
+pr_rf_oos_tempted2 <- roc_rf_oos_tempted2 <- 
+  pr_glm_oos_tempted2 <- roc_glm_oos_tempted2 <- roc_glm_oos_tempted
+
+smooth <- c(1, 0.1, 0.01, 0.005, rep(1e-4, 5))
+for (ss in 1:nsim){
+  print(ss)
+  for (jj in 1:length(nkeep)){
+    meta_sub <- read.csv(paste0("simdata/realsim", ss, "_ntime", nkeep[jj], ".csv"), header=T, row.names=1)
+    count_sub <- count_tab[rownames(meta_sub),]
+    meta_sub$studyid <- as.character(meta_sub$studyid)
+    meta_sub$delivery_ind <- meta_sub$delivery=="Vaginal"
+    subdata <- format_tempted(count_sub, meta_sub$day_of_life, meta_sub$studyid, 
+                            threshold=0.95, pseudo=0.5, transform="clr")
+    metauni_sub <- unique(meta_sub[,c("studyid", "delivery_ind")])
+    # leave one out prediction
+    predprob_glm <- predprob_rf <- predprob_glm2 <- predprob_rf2 <- rep(NA, length(subdata))
+    
+    for (ii in 1:length(subdata)){
+      print(ii)
+      res_train <- tempted(subdata[-ii], r = 3, 
+                           resolution = (nkeep[jj]+16)*2, smooth=smooth[jj])
+      A_test <- est_test_subject(subdata[ii], res_train, mean_svd=NULL)
+      dftrain <- data.frame(y=metauni[-ii,"delivery_ind"], x=res_train$A)
+      dftest <- data.frame(y=metauni[ii,"delivery_ind"], x=A_test)
+      # logistic regression
+      glm_fit <- glm(y ~ ., data = dftrain, family = "binomial")
+      predprob_glm[ii] <- predict(glm_fit, newdata=dftest, type = "response")
+      glm_fit2 <- glm(y ~ x.PC1 + x.PC2, data = dftrain, family = "binomial")
+      predprob_glm2[ii] <- predict(glm_fit2, newdata=dftest, type = "response")
+      # random forest
+      rf_fit <- randomForest(as.factor(y) ~ ., data = dftrain,
+                             strata=as.factor(y))
+      predprob_rf[ii] <- predict(rf_fit, newdata=dftest, type = "prob")[,"TRUE"]
+      rf_fit2 <- randomForest(as.factor(y) ~ x.PC1 + x.PC2, data = dftrain,
+                             strata=as.factor(y))
+      predprob_rf2[ii] <- predict(rf_fit2, newdata=dftest, type = "prob")[,"TRUE"]
+      
+    }
+    roc_glm_oos_tempted[ss,jj] <- roc.curve(predprob_glm[metauni_sub$delivery_ind], 
+                                        predprob_glm[!metauni_sub$delivery_ind])$auc
+    pr_glm_oos_tempted[ss,jj] <- pr.curve(predprob_glm[metauni_sub$delivery_ind], 
+                                      predprob_glm[!metauni_sub$delivery_ind])$auc.integral
+    roc_rf_oos_tempted[ss,jj] <- roc.curve(predprob_rf[metauni_sub$delivery_ind], 
+                                        predprob_rf[!metauni_sub$delivery_ind])$auc
+    pr_rf_oos_tempted[ss,jj] <- pr.curve(predprob_rf[metauni_sub$delivery_ind], 
+                                      predprob_rf[!metauni_sub$delivery_ind])$auc.integral
+    
+    roc_glm_oos_tempted2[ss,jj] <- roc.curve(predprob_glm2[metauni_sub$delivery_ind], 
+                                        predprob_glm2[!metauni_sub$delivery_ind])$auc
+    pr_glm_oos_tempted2[ss,jj] <- pr.curve(predprob_glm2[metauni_sub$delivery_ind], 
+                                      predprob_glm2[!metauni_sub$delivery_ind])$auc.integral
+    roc_rf_oos_tempted2[ss,jj] <- roc.curve(predprob_rf2[metauni_sub$delivery_ind], 
+                                        predprob_rf2[!metauni_sub$delivery_ind])$auc
+    pr_rf_oos_tempted2[ss,jj] <- pr.curve(predprob_rf2[metauni_sub$delivery_ind], 
+                                      predprob_rf2[!metauni_sub$delivery_ind])$auc.integral
+  }
+  write.csv(pr_glm_oos_tempted, 
+            file=paste0("result/realsim_ecam_pr_oos_glm_", method, "_nomean3.csv"))
+  write.csv(roc_glm_oos_tempted, 
+            file=paste0("result/realsim_ecam_roc_oos_glm_", method, "_nomean3.csv"))
+  write.csv(pr_rf_oos_tempted, 
+            file=paste0("result/realsim_ecam_pr_oos_rf_", method, "_nomean3.csv"))
+  write.csv(roc_rf_oos_tempted, 
+            file=paste0("result/realsim_ecam_roc_oos_rf_", method, "_nomean3.csv"))
+  
+  write.csv(pr_glm_oos_tempted2, 
+            file=paste0("result/realsim_ecam_pr_oos_glm_", method, "_nomean2.csv"))
+  write.csv(roc_glm_oos_tempted2, 
+            file=paste0("result/realsim_ecam_roc_oos_glm_", method, "_nomean2.csv"))
+  write.csv(pr_rf_oos_tempted2, 
+            file=paste0("result/realsim_ecam_pr_oos_rf_", method, "_nomean2.csv"))
+  write.csv(roc_rf_oos_tempted2, 
+            file=paste0("result/realsim_ecam_roc_oos_rf_", method, "_nomean2.csv"))
+}
+
+
+```
+
+## Plot for Supp Figure A4
+
+### Subject-level ROC and PR
+
+```{r summary_sub_classification_nomean}
+method  <- c("tempted", "tempted_nomean2", "tempted_nomean3")
+measure <- c("roc", "pr")
+classify <- c("glm", "rf")
+
+tab_auc_subj <- NULL
+
+for (ms in measure){
+  for (cls in classify){ 
+    # in sample
+    for (mthd in method){
+      fname <- paste0("result/realsim_ecam_", ms, "_sub_", cls, "_", mthd, ".csv")
+      tab0 <- read.csv(fname, row.names=1)
+      tab0 <- 1-as.matrix(tab0)
+      tab_tmp <- data.frame(auc=as.vector(tab0),
+                      nsample=as.vector(t(matrix(rep(nkeep,nsim),length(nkeep),nsim))),
+                      method=toupper(mthd), measure=toupper(ms), classify=cls,
+                      type="In-Sample")
+      tab_auc_subj <- rbind(tab_auc_subj, tab_tmp)
+    }
+    # out of sample
+    for (mthd in method){
+      fname <- paste0("result/realsim_ecam_", ms, "_oos_", cls, "_", mthd, ".csv")
+      tab0 <- read.csv(fname, row.names=1)
+      tab0 <- 1-as.matrix(tab0)
+      tab_tmp <- data.frame(auc=as.vector(tab0),
+                      nsample=as.vector(t(matrix(rep(nkeep,nsim),length(nkeep),nsim))),
+                      method=toupper(mthd), measure=toupper(ms), classify=cls,
+                      type="Out-of-Sample")
+      tab_auc_subj <- rbind(tab_auc_subj, tab_tmp)
+    }
+  }  
+}
+tab_auc_subj$classify <- gsub("glm", "Logistic Regression", tab_auc_subj$classify)
+tab_auc_subj$classify <- gsub("rf", "Random Forest", tab_auc_subj$classify)
+
+```
+
+Plot all subject-level PR
+
+```{r plot_sub_auc_nomean}
+tab_auc_subj$nsample <- as.factor(tab_auc_subj$nsample)
+tab1 <- aggregate(auc~nsample+measure+method+classify+type, data=tab_auc_subj, 
+                  FUN=mean)
+names(tab1)[6] <- "mean"
+tab2 <- aggregate(auc~nsample+measure+method+classify+type, data=tab_auc_subj, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[6] <- "se"
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_auc_subj_summary <- merge(tab1, tab2)
+tab_auc_subj_summary$nsample <- factor(tab_auc_subj_summary$nsample, 
+                                     level=as.character(nkeep))
+
+color_method <- c("black", # for tempted
+                  "blue", # dark blue for rank=2
+                  "red") # dark red for rank=3 
+
+ann_text <- tab_auc_subj_summary[2,]
+ann_text$mean <- mean(!metauni$delivery_ind)-0.015
+ann_text$nsample <- 6.5
+p_subj_pr <- ggplot(data=dplyr::filter(tab_auc_subj_summary, measure=="PR"), 
+                            aes(x=nsample, y=mean, group=paste0(type,method), color=method)) + 
+  geom_line(size=1, position=position_dodge(0.5), aes(linetype=type)) + 
+  geom_point(size=2, position=position_dodge(0.5)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=0.5), 
+                position=position_dodge(0.5), size=1) + 
+  geom_hline(yintercept=mean(!metauni$delivery_ind), linetype="dotted", color = "black", size=1) +
+  geom_text(data = ann_text,label = "At random", color="black") +
+  facet_wrap(.~classify) +
+  labs(y="AUC-PR Error", x="Number of Time Points")+
+  ggtitle("Subject Level") +
+  scale_color_manual(values=color_method) +
+  theme_bw()
+p_subj_pr
+```
+
+### Sample-level PERMANOVA F-values
+
+```{r summary_Fvalue_nomean}
+# read in results
+Fmodel <- array(0, dim=c(3, nsim, length(nkeep)),
+                dimnames=list(c("TEMPTED", "TEMPTED_NOMEAN2", "TEMPTED_NOMEAN3"), paste0("sim",1:nsim), paste0("nsample=",nkeep)))
+Fmodel_tempted <- read.csv("result/realsim_ecam_Fvalue_tempted.csv", row.names=1)
+Fmodel[1,,] <- as.matrix(Fmodel_tempted)
+Fmodel_tempted_nomean2 <- read.csv("result/realsim_ecam_Fvalue_tempted_nomean2.csv", row.names=1)
+Fmodel[2,,] <- as.matrix(Fmodel_tempted_nomean2)
+Fmodel_tempted_nomean3 <- read.csv("result/realsim_ecam_Fvalue_tempted_nomean3.csv", row.names=1)
+Fmodel[3,,] <- as.matrix(Fmodel_tempted_nomean3)
+# make table
+tab_Fmodel <- NULL
+for (ii in 1:dim(Fmodel)[1]){
+  tab_tmp <- data.frame(Fvalue=as.vector(Fmodel[ii,,]),
+                        nsample=as.vector(t(matrix(rep(nkeep,nsim),length(nkeep),nsim))),
+                        method=dimnames(Fmodel)[[1]][ii])
+  tab_Fmodel <- rbind(tab_Fmodel, tab_tmp)
+}
+
+```
+
+Plot all PERMANOVA F-values
+
+```{r plot_Fvalue_nomean}
+tab1 <- aggregate(Fvalue~nsample+method, data=tab_Fmodel, 
+                  FUN=mean)
+names(tab1)[3] <- "mean"
+tab2 <- aggregate(Fvalue~nsample+method, data=tab_Fmodel, 
+                  FUN=function(x){sd(x)/sqrt(length(x))})
+names(tab2)[3] <- "se"
+rownames(tab1) <-rownames(tab2) <- NULL
+tab_Fmodel_summary <- merge(tab1, tab2)
+
+color_method <- c("black", # for tempted
+                  "blue", # dark blue for rank=2
+                  "red") # dark red for rank=3 
+p_Fmodel_summary <- ggplot(data=tab_Fmodel_summary, 
+                                aes(x=nsample, y=mean, group=method, color=method)) + 
+  geom_line(size=1, position=position_dodge(0.1)) + geom_point(size=2, position=position_dodge(0.1)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=1), 
+                position=position_dodge(0.1), size=1) + 
+  scale_x_continuous(breaks=2:10) + 
+  scale_color_manual(values=color_method) +
+  ylab("PERMANOVA F-value") + xlab("Number of Time Points") + 
+  ggtitle("Sample Level") +
+  theme_bw() + 
+  theme(legend.position = "bottom")
+p_Fmodel_summary
+```
+
+
+#### get legend color for all
+
+```{r get_legend_nomean}
+color_method <- c("black", # for tempted
+                  "blue", # dark blue for rank=2
+                  "red") # dark red for rank=3 
+mm <- length(color_method)
+tab_lgd <- data.frame(Method=rep(c("TEMPTED", "TEMPTED-nomean-rank2","TEMPTED-nomean-rank3"),4),
+                      value=rnorm(4*mm), time=rep(1:4, each=mm),
+                      Type=c(rep("In-Sample",each=2*mm), rep("Out-of-Sample", each=2*mm)))
+p_lgd <- ggplot(data=tab_lgd, aes(x=time, y=value, color=Method)) + 
+  geom_point(size=2) + geom_line(aes(linetype=Type), size=1) + 
+  scale_color_manual(values=color_method) +
+  theme_bw() +
+  theme(legend.position="bottom") +
+  guides(color = guide_legend(nrow = 2), linetype = guide_legend(nrow = 2))
+p_lgd
+lgd <- get_legend(p_lgd)
+```
+
+### Print plot for manuscript
+
+```{r plot_nomean}
+lay <- rbind(c(1,1,2),c(1,1,2),c(1,1,2),c(1,1,2),c(1,1,2),
+             c(3,3,3))
+p_all <- grid.arrange(p_subj_pr + theme(legend.position="none"),
+                      p_Fmodel_summary + theme(legend.position="none"), 
+                      lgd,
+                      layout_matrix=lay)
+ggsave("../figure_table/realsim_ecam_nomean.pdf", width=10, height=5, plot=p_all)
+```
+
+

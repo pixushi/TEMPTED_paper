@@ -30,6 +30,7 @@ library(randomForest) # random forest
 library(PRROC) # roc and pr
 library(phyloseq) # phyloseq object
 library(ALDEx2) # differential abundance
+library(tempted)
 
 # for plotting
 library(ggpubr)
@@ -40,7 +41,6 @@ library(RColorBrewer)
 # set working directory to be where the current script is located
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
-source('../TEMPTED.R')
 color_RB <- brewer.pal(3,'Set1')[1:2]
 ```
 
@@ -115,7 +115,7 @@ save(ps_filtered,
 ```
 
 ```{r}
-load('result/res_delivery_tempted.Rdata')
+load('result/res_delivery_tempted2.Rdata')
 count_tab <- data.frame(otu_table(ps_filtered))
 meta_tab <- data.frame(sample_data(ps_filtered))
 res_tempted <- res_tempted_conc
@@ -151,20 +151,20 @@ table(rownames(A_hat)==rownames(res_tempted$A_hat))
 A_hat <- cbind(res_tempted$A_hat[,1:npc], A_hat)
 A_hat$PregOut <- as.factor(A_hat$PregOut)
 
-pval <- round(wilcox.test(A_hat$`Component 1`~A_hat$PregOut)$p.value,4)
+pval <- round(wilcox.test(A_hat$PC1~A_hat$PregOut)$p.value,4)
 p_sub_box <- ggplot(A_hat) + 
-  geom_boxplot(aes(x=PregOut, y=`Component 1`, fill=PregOut)) + 
+  geom_boxplot(aes(x=PregOut, y=PC1, fill=PregOut)) + 
   theme_bw() + scale_fill_manual(values=color_RB) + 
-  labs(x="Outcome") + 
+  labs(x="Outcome", y="Component 1") + 
   theme(legend.position="none") +
   annotate("text", x=1.5, y=0.15, label= paste0("p-value = ", pval))
 p_sub_box
 
-pval2 <- round(wilcox.test(A_hat$`Component 2`~A_hat$PregOut)$p.value,4)
+pval2 <- round(wilcox.test(A_hat$PC2~A_hat$PregOut)$p.value,4)
 p_sub_box2 <- ggplot(A_hat) + 
-  geom_boxplot(aes(x=PregOut, y=`Component 2`, fill=PregOut)) + 
+  geom_boxplot(aes(x=PregOut, y=PC2, fill=PregOut)) + 
   theme_bw() + scale_fill_manual(values=color_RB) + 
-  labs(x="Outcome") + 
+  labs(x="Outcome", y="Component 2") + 
   theme(legend.position="none") +
   annotate("text", x=1.5, y=0.15, label= paste0("p-value = ", pval2))
 
@@ -188,10 +188,10 @@ reshape_feat_ratio <- reshape(tab_feat_ratio,
                               idvar=c("PregID","timepoint") , 
                               v.names=c("value"), timevar="PC",
                               direction="wide")
-CC <- grep('Component',colnames(reshape_feat_ratio))
-colnames(reshape_feat_ratio)[CC] <- paste('Component', 1:npc)
+CC <- grep('PC',colnames(reshape_feat_ratio))
+colnames(reshape_feat_ratio)[CC] <- paste0('PC', 1:npc)
 feature_mat_ratio <- reshape_feat_ratio[,CC]
-colnames(feature_mat_ratio) <- paste("Component", 1:npc)
+colnames(feature_mat_ratio) <- paste0("PC", 1:npc)
 
 
 time_vec_ratio <- reshape_feat_ratio$timepoint
@@ -200,7 +200,6 @@ p_feat_ratio_summary <- plot_feature_summary(feature_mat_ratio,
                                              time_vec_ratio, 
                                              group_vec_ratio, bws=12, nrow=1)
 feature_mat_ratio1 <- feature_mat_ratio[,1,drop=FALSE]
-colnames(feature_mat_ratio1) <- "Component 1"
 p_feat_ratio_summary <- plot_feature_summary(feature_mat_ratio1, 
                                              time_vec_ratio, 
                                              group_vec_ratio, bws=12, nrow=1) + 
@@ -251,10 +250,10 @@ p_bar <- tab_taxa %>%
 
 
 
-```{r fig_for_paper, fig.width=16, fig.height=3.5}
+```{r fig_for_paper, fig.width=12, fig.height=3.5}
 lay <- matrix(c(1,1,2,2,2,2,3,3,3),1,)
 p_all <- grid.arrange(p_sub_box, p_bar, p_feat_ratio_summary, layout_matrix=lay)
-ggsave('../figure_table/vaginal_Stanford_plot.pdf', width=16, height=3.5, plot=p_all)
+ggsave('../figure_table/vaginal_Stanford_plot.pdf', width=12, height=3.5, plot=p_all)
 ```
 
 # microTensor
