@@ -37,7 +37,44 @@ library(RColorBrewer)
 # set working directory to be where the current script is located
 mydir <- dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(mydir)
+```
+
+## Color codes
+
+```{r color}
+# red and blue
 color_RB <- brewer.pal(3,"Set1")[1:2]
+# method for subject level
+color_method <- c("#33a02c", #green for CTF
+                  "#bdbdbd", #lightgray for FTSVD
+                  "#0096FF", #blue for microTensor
+                  "#f525dd", #pink for TCAM
+                  "#5A5A5A") #gray for TEMPTED
+# method for sample level
+color_method2 <- c("#ff7f00", #orange for Bray
+                   "#33a02c", #green for CTF
+                   "#bdbdbd", #lightgray for FTSVD
+                   "#0096FF", #blue for microTensor
+                   "#5A5A5A", #gray for TEMPTED
+                   "#CF9FFF", #light violet for Unifrac
+                   "#7F00FF") #violet for unweighted Unifrac
+# method for all
+color_method_all <- c("#ff7f00", #orange for Bray
+                      "#33a02c", #green for CTF
+                      "#bdbdbd", #lightgray for FTSVD
+                      "#0096FF", #blue for microTensor
+                      "#f525dd", #pink for TCAM
+                      "#5A5A5A", #gray for TEMPTED
+                      "#CF9FFF", #light violet for Unifrac
+                      "#7F00FF") #violet for unweighted Unifrac
+# method for reconstruction
+color_method3 <- c("#33a02c", #green for CTF
+                   "#bdbdbd", # lightgray for FTSVD
+                   "#5A5A5A") #gray for TEMPTED
+# color for mean removal vs not
+color_method4 <- c("black", # for tempted
+                  "blue", # dark blue for rank=2
+                  "red") # dark red for rank=3 
 ```
 
 ## Read in the data
@@ -1260,11 +1297,7 @@ tab_auc_subj_summary <- merge(tab1, tab2)
 tab_auc_subj_summary$nsample <- factor(tab_auc_subj_summary$nsample, 
                                      level=as.character(nkeep))
 
-color_method <- c("#33a02c", #green for CTF
-                  "#bdbdbd", #lightgray for FTSVD
-                  "#0096FF", #blue for microTensor
-                  "#f525dd", #pink for TCAM
-                  "#5A5A5A") #gray for TEMPTED
+
 
 ann_text <- tab_auc_subj_summary[2,]
 ann_text$mean <- mean(!metauni$delivery_ind)-0.015
@@ -1326,20 +1359,14 @@ names(tab2)[3] <- "se"
 rownames(tab1) <-rownames(tab2) <- NULL
 tab_Fmodel_summary <- merge(tab1, tab2)
 
-color_method <- c("#ff7f00", #orange for Bray
-                  "#33a02c", #green for CTF
-                  "#bdbdbd", #lightgray for FTSVD
-                  "#0096FF", #blue for microTensor
-                  "#5A5A5A", #gray for TEMPTED
-                  "#7F00FF", #purple for Unifrac
-                  "#e31a1c") #red for unweighted Unifrac
+
 p_Fmodel_summary <- ggplot(data=tab_Fmodel_summary, 
                                 aes(x=nsample, y=mean, group=method, color=method)) + 
   geom_line(size=1, position=position_dodge(0.1)) + geom_point(size=2, position=position_dodge(0.1)) +
   geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=1), 
                 position=position_dodge(0.1), size=1) + 
   scale_x_continuous(breaks=2:10) + 
-  scale_color_manual(values=color_method) +
+  scale_color_manual(values=color_method2) +
   ylab("PERMANOVA F-value") + xlab("Number of Time Points") + 
   ggtitle("Sample Level") +
   theme_bw() + 
@@ -1354,22 +1381,14 @@ p_Fmodel_summary
 Get legend color for all
 
 ```{r get_legend}
-color_method <- c("#ff7f00", #orange for Bray
-                  "#33a02c", #green for CTF
-                  "#bdbdbd", #lightgray for FTSVD
-                  "#0096FF", #blue for microTensor
-                  "#f525dd", #pink for TCAM
-                  "#5A5A5A", #gray for TEMPTED
-                  "#7F00FF", #purple for Unifrac
-                  "#e31a1c") #red for unweighted Unifrac
-mm <- length(color_method)
+mm <- length(color_method_all)
 tab_lgd <- data.frame(Method=rep(c("Bray-Curtis", "CTF", "FTSVD", "microTensor", "TCAM",
                                "TEMPTED", "UniFrac","Weighted UniFrac"),4),
                       value=rnorm(4*mm), time=rep(1:4, each=mm),
                       Type=c(rep("In-Sample",each=2*mm), rep("Out-of-Sample", each=2*mm)))
 p_lgd <- ggplot(data=tab_lgd, aes(x=time, y=value, color=Method)) + 
   geom_point(size=2) + geom_line(aes(linetype=Type), size=1) + 
-  scale_color_manual(values=color_method) +
+  scale_color_manual(values=color_method_all) +
   theme_bw() +
   theme(legend.position="bottom") +
   guides(color = guide_legend(nrow = 2), linetype = guide_legend(nrow = 2))
@@ -1448,12 +1467,6 @@ tab_auc_subj_summary <- merge(tab1, tab2)
 tab_auc_subj_summary$nsample <- factor(tab_auc_subj_summary$nsample, 
                                      level=as.character(nkeep))
 
-color_method <- c("#33a02c", #green for CTF
-                  "#bdbdbd", #lightgray for FTSVD
-                  "#0096FF", #blue for microTensor
-                  "#f525dd", #pink for TCAM
-                  "#5A5A5A") #gray for TEMPTED
-
 ann_text <- tab_auc_subj_summary[2,]
 ann_text$mean <- mean(!metauni$delivery_ind)-0.015
 ann_text$nsample <- 6.5
@@ -1514,20 +1527,13 @@ names(tab2)[3] <- "se"
 rownames(tab1) <-rownames(tab2) <- NULL
 tab_Fmodel_summary <- merge(tab1, tab2)
 
-color_method <- c("#ff7f00", #orange for Bray
-                  "#33a02c", #green for CTF
-                  "#bdbdbd", #lightgray for FTSVD
-                  "#0096FF", #blue for microTensor
-                  "#5A5A5A", #gray for TEMPTED
-                  "#7F00FF", #purple for Unifrac
-                  "#e31a1c") #red for unweighted Unifrac
 p_Fmodel_summary2 <- ggplot(data=tab_Fmodel_summary, 
                                 aes(x=nsample, y=mean, group=method, color=method)) + 
   geom_line(size=1, position=position_dodge(0.1)) + geom_point(size=2, position=position_dodge(0.1)) +
   geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se, width=1), 
                 position=position_dodge(0.1), size=1) + 
   scale_x_continuous(breaks=2:10) + 
-  scale_color_manual(values=color_method) +
+  scale_color_manual(values=color_method2) +
   ylab("PERMANOVA F-value") + xlab("Number of Time Points") + 
   ggtitle("Sample Level") +
   theme_bw() + 
@@ -1540,22 +1546,14 @@ p_Fmodel_summary2
 Get legend color for all
 
 ```{r get_legend2}
-color_method <- c("#ff7f00", #orange for Bray
-                  "#33a02c", #green for CTF
-                  "#bdbdbd", #lightgray for FTSVD
-                  "#0096FF", #blue for microTensor
-                  "#f525dd", #pink for TCAM
-                  "#5A5A5A", #gray for TEMPTED
-                  "#7F00FF", #purple for Unifrac
-                  "#e31a1c") #red for unweighted Unifrac
-mm <- length(color_method)
+mm <- length(color_method_all)
 tab_lgd2 <- data.frame(Method=rep(c("Bray-Curtis", "CTF_month", "FTSVD", "microTensor_month", "TCAM",
                                "TEMPTED", "UniFrac","Weighted UniFrac"),4),
                       value=rnorm(4*mm), time=rep(1:4, each=mm),
                       Type=c(rep("In-Sample",each=2*mm), rep("Out-of-Sample", each=2*mm)))
 p_lgd2 <- ggplot(data=tab_lgd2, aes(x=time, y=value, color=Method)) + 
   geom_point(size=2) + geom_line(aes(linetype=Type), size=1) + 
-  scale_color_manual(values=color_method) +
+  scale_color_manual(values=color_method_all) +
   theme_bw() +
   theme(legend.position="bottom") +
   guides(color = guide_legend(nrow = 2), linetype = guide_legend(nrow = 2))
@@ -1745,7 +1743,8 @@ p_Fmodel_pseudo_summary <- ggplot(data=tab_Fmodel_pseudo_summary,
   labs(y="PERMANOVA F-value", x="Number of Time Points", 
        title="Sample Level", color="Pseudo Count", group="Pseudo Count") +
   theme_bw() + 
-  theme(legend.position = "right")
+  theme(legend.position = "right") + 
+  scale_color_brewer(palette = "Set2")
 p_Fmodel_pseudo_summary
 ```
 
@@ -1813,7 +1812,8 @@ p_subj_roc_pseudo <- ggplot(data=dplyr::filter(tab_auc_subj_pseudo_summary, meas
   labs(y="AUC-ROC error", x="Number of Time Points", 
        title="Subject Level", color="Pseudo Count", group="Pseudo Count") +
   theme_bw() + 
-  theme(legend.position = "none")
+  theme(legend.position = "none") + 
+  scale_color_brewer(palette = "Set2")
 
 ann_text <- tab_auc_subj_pseudo_summary[2,]
 ann_text$mean <- mean(!metauni$delivery_ind)-0.015
@@ -1830,7 +1830,8 @@ p_subj_pr_pseudo <- ggplot(data=dplyr::filter(tab_auc_subj_pseudo_summary, measu
   labs(y="AUC-PR Error", x="Number of Time Points")+
   ggtitle("Subject Level") +
   theme_bw() +
-  theme(legend.position = "none")
+  theme(legend.position = "none") + 
+  scale_color_brewer(palette = "Set2")
 p_subj_pr_pseudo
 ```
 
@@ -2019,7 +2020,8 @@ p_Fmodel_smooth_summary <- ggplot(data=tab_Fmodel_smooth_summary,
   labs(y="PERMANOVA F-value", x="Number of Time Points", 
        title="Sample Level", color="Value of C_K", group="Value of C_K") +
   theme_bw() + 
-  theme(legend.position = "right")
+  theme(legend.position = "right") + 
+  scale_color_brewer(palette = "Set2")
 p_Fmodel_smooth_summary
 ```
 
@@ -2103,7 +2105,8 @@ p_subj_pr_smooth <- ggplot(data=dplyr::filter(tab_auc_subj_smooth_summary, measu
   labs(y="AUC-PR Error", x="Number of Time Points")+
   ggtitle("Subject Level") +
   theme_bw() +
-  theme(legend.position = "none")
+  theme(legend.position = "none") + 
+  scale_color_brewer(palette = "Set2")
 p_subj_pr_smooth
 ```
 
@@ -2287,10 +2290,6 @@ tab_R2_summary <- tab_R2_summary %>%
 
 
 ```{r reconstruct_plot}
-color_method <- c("#33a02c", #green for CTF
-                  "#bdbdbd", # lightgray for FTSVD
-                  #"#0096FF", #blue for microTensor
-                  "#5A5A5A") #gray for TEMPTED  
 p_R2_summary <- ggplot(data=tab_R2_summary, 
                                 aes(x=rank, y=1-mean, group=interaction(method, mean_subtract), color=method, linetype=mean_subtract)) + 
   geom_line(size=1, position=position_dodge(0.1)) + geom_point(size=2, position=position_dodge(0.1)) +
@@ -2299,7 +2298,7 @@ p_R2_summary <- ggplot(data=tab_R2_summary,
                 size=1) + 
   theme_bw() + 
   scale_x_continuous(breaks=1:10) + 
-  scale_color_manual(values=color_method) +
+  scale_color_manual(values=color_method3) +
   facet_wrap(~ normalization, scales = "free_y") +
   theme(strip.background = element_blank(),
   strip.text.x = element_blank()) +
@@ -2674,16 +2673,13 @@ p_Fmodel_summary
 #### get legend color for all
 
 ```{r get_legend_nomean}
-color_method <- c("black", # for tempted
-                  "blue", # dark blue for rank=2
-                  "red") # dark red for rank=3 
 mm <- length(color_method)
 tab_lgd <- data.frame(Method=rep(c("TEMPTED", "TEMPTED-nomean-rank2","TEMPTED-nomean-rank3"),4),
                       value=rnorm(4*mm), time=rep(1:4, each=mm),
                       Type=c(rep("In-Sample",each=2*mm), rep("Out-of-Sample", each=2*mm)))
 p_lgd <- ggplot(data=tab_lgd, aes(x=time, y=value, color=Method)) + 
   geom_point(size=2) + geom_line(aes(linetype=Type), size=1) + 
-  scale_color_manual(values=color_method) +
+  scale_color_manual(values=color_method4) +
   theme_bw() +
   theme(legend.position="bottom") +
   guides(color = guide_legend(nrow = 2), linetype = guide_legend(nrow = 2))

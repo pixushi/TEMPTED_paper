@@ -42,7 +42,7 @@ library(plotly)
 # set working directory to be where the current script is located
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
-col_group <- c(brewer.pal(6,'Set2')[6], brewer.pal(6,'Set1')[c(3,1)])
+col_group <- c("#5A5A5A", brewer.pal(7,'Set1')[c(5,3)])
 col_microbe <- c(brewer.pal(6,'Set1')[c(2,4)], brewer.pal(6,'Set2')[4])
 npc <- 3 # number of components
 bws <- 8 # for plotting

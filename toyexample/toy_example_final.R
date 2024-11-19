@@ -7,13 +7,13 @@ library(gridExtra)
 library(ggpubr)
 library(grid)
 library(RColorBrewer)
+library(tempted)
 
 # set working directory to be where the current script is located
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 
-source('../TEMPTED.R')
-col_group <- brewer.pal(6,'Set1')[c(1,5,3)]
+col_group <- brewer.pal(7,'Set1')[c(7,5,3)]
 col_microbe <- c(brewer.pal(6,'Set1')[c(2,4)], brewer.pal(6,'Set2')[4])
 col_microbe <- c(col_microbe[c(1,3,2)], '#999999')
 
